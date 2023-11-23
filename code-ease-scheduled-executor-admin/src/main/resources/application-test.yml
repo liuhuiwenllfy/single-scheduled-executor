@@ -1,5 +1,5 @@
 server:
-  port: 9992  #端口配置
+  port: 9994  #端口配置
 spring:
   datasource: #配置数据库
     dynamic:
@@ -28,14 +28,9 @@ logging:
     com.llfy.cesea: debug  #日志级别
   file:
     path: log #日志输出路径
-scheduled:
-  corePoolSize: 3 #定时任务核心线程数
-  callback: /scheduledExecutor/callback #消息回调地址
 business:
   name: business #业务集群名称
 actuator:
   name: actuator #执行器集群名称
 app:
-  name: cluster-2 #执行器名称
-  heartbeat:
-    interval: 5000 #执行器心跳检测
+  name: business-1 #业务系统名称

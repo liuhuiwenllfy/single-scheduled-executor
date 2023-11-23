@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.llfy.cesea.scheduledExecutor.mapper.TaskInfoMapper">
+
+    <!-- 通用查询映射结果 -->
+    <resultMap id="BaseResultMap" type="com.llfy.cesea.scheduledExecutor.entity.TaskInfo">
+        <id column="id" property="id" />
+        <result column="title" property="title" />
+        <result column="cron" property="cron" />
+        <result column="task_param" property="taskParam" />
+        <result column="status" property="status" />
+        <result column="next_execution_time" property="nextExecutionTime" />
+        <result column="create_time" property="createTime" />
+        <result column="create_user" property="createUser" />
+        <result column="update_time" property="updateTime" />
+        <result column="update_user" property="updateUser" />
+        <result column="delete_time" property="deleteTime" />
+        <result column="delete_user" property="deleteUser" />
+        <result column="is_delete" property="isDelete" />
+        <result column="version" property="version" />
+        <result column="tenant_id" property="tenantId" />
+    </resultMap>
+
+    <!-- 通用查询结果列 -->
+    <sql id="Base_Column_List">
+        id, title, cron, task_param, status, next_execution_time, create_time, create_user, update_time, update_user, delete_time, delete_user, is_delete, version, tenant_id
+    </sql>
+
+</mapper>

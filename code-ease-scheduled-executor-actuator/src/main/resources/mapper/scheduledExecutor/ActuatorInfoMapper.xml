@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.llfy.cesea.scheduledExecutor.mapper.ActuatorInfoMapper">
+
+    <!-- 通用查询映射结果 -->
+    <resultMap id="BaseResultMap" type="com.llfy.cesea.scheduledExecutor.entity.ActuatorInfo">
+        <id column="id" property="id" />
+        <result column="actuator_name" property="actuatorName" />
+        <result column="actuator_ip" property="actuatorIp" />
+        <result column="create_time" property="createTime" />
+        <result column="create_user" property="createUser" />
+        <result column="update_time" property="updateTime" />
+        <result column="update_user" property="updateUser" />
+        <result column="delete_time" property="deleteTime" />
+        <result column="delete_user" property="deleteUser" />
+        <result column="is_delete" property="isDelete" />
+        <result column="version" property="version" />
+        <result column="tenant_id" property="tenantId" />
+    </resultMap>
+
+    <!-- 通用查询结果列 -->
+    <sql id="Base_Column_List">
+        id, actuator_name, actuator_ip, create_time, create_user, update_time, update_user, delete_time, delete_user, is_delete, version, tenant_id
+    </sql>
+
+</mapper>

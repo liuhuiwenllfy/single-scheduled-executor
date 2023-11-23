@@ -8,10 +8,10 @@
         <version>1.0.0</version>
     </parent>
 
-    <artifactId>code-ease-scheduled-executor-actuator</artifactId>
+    <artifactId>code-ease-scheduled-executor-admin</artifactId>
     <version>1.0.0</version>
-    <name>code-ease-scheduled-executor-actuator</name>
-    <description>code-ease-scheduled-executor-actuator</description>
+    <name>code-ease-scheduled-executor-admin</name>
+    <description>code-ease-scheduled-executor-admin</description>
 
     <dependencies>
         <dependency>
@@ -46,6 +46,28 @@
             <groupId>com.baomidou</groupId>
             <artifactId>dynamic-datasource-spring-boot-starter</artifactId>
         </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-validation</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.springfox</groupId>
+            <artifactId>springfox-boot-starter</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.github.xiaoymin</groupId>
+            <artifactId>knife4j-spring-boot-starter</artifactId>
+            <exclusions>
+                <exclusion>
+                    <groupId>io.swagger</groupId>
+                    <artifactId>swagger-annotations</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>io.swagger</groupId>
+                    <artifactId>swagger-models</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
     </dependencies>
 
     <build>
@@ -60,7 +82,7 @@
                     <outputDirectory>../docker</outputDirectory>
                     <!-- 主启动类全类名 -->
                     <mainClass>
-                        com.llfy.cesea.CodeEaseScheduledExecutorActuatorApplication
+                        com.llfy.cesea.CodeEaseScheduledExecutorAdminApplication
                     </mainClass>
                 </configuration>
                 <executions>
