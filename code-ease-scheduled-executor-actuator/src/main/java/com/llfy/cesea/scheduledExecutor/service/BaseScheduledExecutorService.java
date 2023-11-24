@@ -1,9 +1,8 @@
 package com.llfy.cesea.scheduledExecutor.service;
 
 import com.alibaba.fastjson.JSON;
-import com.llfy.cesea.scheduledExecutor.dto.ScheduledFutureDto;
-import com.llfy.cesea.scheduledExecutor.dto.TaskDto;
 import com.llfy.cesea.core.redis.enums.IncidentEnum;
+import com.llfy.cesea.scheduledExecutor.entity.TaskInfo;
 import com.llfy.cesea.scheduledExecutor.service.runnable.BaseRunnable;
 import com.llfy.cesea.scheduledExecutor.service.runnable.FailoverRunnable;
 import com.llfy.cesea.scheduledExecutor.service.runnable.HeartbeatRunnable;
@@ -37,52 +36,64 @@ import static java.util.concurrent.Executors.newScheduledThreadPool;
 public class BaseScheduledExecutorService {
 
     /**
+     * redis
+     */
+    public final RedisUtil redisUtil;
+    /**
+     * 执行器集群名称
+     */
+    public final String actuatorName;
+    /**
+     * 执行器名称
+     */
+    public final String appName;
+    /**
+     * 业务集群名称
+     */
+    public final String businessName;
+    /**
+     * 心跳检测周期
+     */
+    public final long appHeartbeatInterval;
+    /**
+     * 端口
+     */
+    public final String port;
+    /**
+     * redis
+     */
+    public final StringRedisTemplate stringRedisTemplate;
+    /**
+     * 持久化
+     */
+    public final boolean persistence;
+    /**
+     * 任务服务
+     */
+    public final ITaskInfoService taskInfoService;
+    /**
+     * 日志服务
+     */
+    public final ISchedulingLogService schedulingLogService;
+    /**
+     * 执行器服务
+     */
+    public final IActuatorInfoService actuatorInfoService;
+    /**
      * 计划执行程序服务
      */
     private final ScheduledExecutorService executor;
-
     /**
      * 回调地址
      */
     private final String callback;
-
-    /**
-     * redis
-     */
-    private final RedisUtil redisUtil;
-
-    /**
-     * 执行器集群名称
-     */
-    private final String actuatorName;
-
-    /**
-     * 执行器名称
-     */
-    private final String appName;
-
-    /**
-     * 业务集群名称
-     */
-    private final String businessName;
-
-    /**
-     * 心跳检测周期
-     */
-    private final long appHeartbeatInterval;
-
-    /**
-     * 端口
-     */
-    private final String port;
-
-    private final StringRedisTemplate stringRedisTemplate;
     /**
      * 当前执行器执行中的任务，key->任务id，value->计划对象
      */
     private final Map<String, ScheduledFuture<?>> map = new HashMap<>();
 
     public BaseScheduledExecutorService(RedisUtil redisUtil,
+                                        StringRedisTemplate stringRedisTemplate,
                                         @Value("${scheduled.corePoolSize}") Integer corePoolSize,
                                         @Value("${scheduled.callback}") String callback,
                                         @Value("${actuator.name}") String actuatorName,
@@ -90,27 +101,34 @@ public class BaseScheduledExecutorService {
                                         @Value("${business.name}") String businessName,
                                         @Value("${app.heartbeat.interval}") long appHeartbeatInterval,
                                         @Value("${server.port}") String port,
-                                        StringRedisTemplate stringRedisTemplate) {
+                                        @Value("${persistence}") boolean persistence,
+                                        ITaskInfoService taskInfoService,
+                                        ISchedulingLogService schedulingLogService,
+                                        IActuatorInfoService actuatorInfoService) {
         //核心线程数
         if (corePoolSize == null) {
             corePoolSize = 2;
         }
         executor = newScheduledThreadPool(corePoolSize);
-        this.callback = callback;
         this.redisUtil = redisUtil;
+        this.stringRedisTemplate = stringRedisTemplate;
+        this.callback = callback;
         this.actuatorName = actuatorName;
         this.appName = appName;
         this.businessName = businessName;
         this.appHeartbeatInterval = appHeartbeatInterval;
         this.port = port;
-        this.stringRedisTemplate = stringRedisTemplate;
+        this.persistence = persistence;
+        this.taskInfoService = taskInfoService;
+        this.schedulingLogService = schedulingLogService;
+        this.actuatorInfoService = actuatorInfoService;
     }
 
     /**
      * 心跳检测任务
      */
     public void heartbeatDetection() {
-        Runnable command = new HeartbeatRunnable(actuatorName, appName, appHeartbeatInterval, redisUtil, port);
+        Runnable command = new HeartbeatRunnable(this);
         executor.scheduleAtFixedRate(command, 1000, appHeartbeatInterval, TimeUnit.MILLISECONDS);
     }
 
@@ -118,7 +136,7 @@ public class BaseScheduledExecutorService {
      * 故障转移
      */
     public void failover() {
-        Runnable command = new FailoverRunnable(actuatorName, appName, appHeartbeatInterval, redisUtil, this, stringRedisTemplate);
+        Runnable command = new FailoverRunnable(this);
         executor.scheduleAtFixedRate(command, 2000, appHeartbeatInterval, TimeUnit.MILLISECONDS);
     }
 
@@ -126,49 +144,56 @@ public class BaseScheduledExecutorService {
     /**
      * 启动单次任务
      *
-     * @param taskDto         任务入参
+     * @param taskInfo        任务入参
      * @param millisecondDiff 延迟毫秒数（宕机重启使用）
      */
-    public void startOnce(TaskDto taskDto, long millisecondDiff) {
+    public void startOnce(TaskInfo taskInfo, Long millisecondDiff) {
         //初始化延迟时间
-        long initialDelay = taskDto.getInitialDelay();
-        if (millisecondDiff > 0) {
+        long initialDelay = taskInfo.getInitialDelay();
+        if (millisecondDiff != null) {
             initialDelay = millisecondDiff;
         }
         //执行任务
-        Runnable command = new BaseRunnable(appName, taskDto, redisUtil, this);
+        Runnable command = new BaseRunnable(this, taskInfo.getId());
         ScheduledFuture<?> scheduledFuture = executor.schedule(command, initialDelay, TimeUnit.MILLISECONDS);
-        map.put(taskDto.getTaskId(), scheduledFuture);
+        map.put(taskInfo.getId(), scheduledFuture);
         //保存任务信息
-        ScheduledFutureDto scheduledFutureDto = new ScheduledFutureDto();
-        scheduledFutureDto.setNextExecutionTime(System.currentTimeMillis() + initialDelay);
-        redisUtil.hPut(appName, taskDto.getTaskId(), JSON.toJSONString(scheduledFutureDto));
-        sendMessage(IncidentEnum.START.getCode(), RespJson.success(taskDto));
+        taskInfo.setNextExecutionTime(System.currentTimeMillis() + initialDelay);
+        taskInfo.setAppName(appName);
+        redisUtil.hPut(appName, taskInfo.getId(), JSON.toJSONString(taskInfo));
+        //持久化
+        if (persistence) {
+            taskInfoService.saveItem(taskInfo);
+        }
+        sendMessage(IncidentEnum.START.getCode(), RespJson.success(taskInfo));
     }
 
 
     /**
      * 启动循环任务
      *
-     * @param taskDto 任务入参
+     * @param taskInfo 任务入参
      */
-    public void startLoop(TaskDto taskDto, long millisecondDiff) {
+    public void startLoop(TaskInfo taskInfo, Long millisecondDiff) {
         //初始化延迟时间
-        long initialDelay = taskDto.getInitialDelay();
-        if (millisecondDiff > 0) {
+        long initialDelay = taskInfo.getInitialDelay();
+        if (millisecondDiff != null) {
             initialDelay = millisecondDiff;
         }
         //执行任务
-        Runnable command = new BaseRunnable(appName, taskDto, redisUtil, this);
-        ScheduledFuture<?> scheduledFuture = executor.scheduleAtFixedRate(command, initialDelay, taskDto.getPeriod(), TimeUnit.MILLISECONDS);
-        map.put(taskDto.getTaskId(), scheduledFuture);
+        Runnable command = new BaseRunnable(this, taskInfo.getId());
+        ScheduledFuture<?> scheduledFuture = executor.scheduleAtFixedRate(command, initialDelay, taskInfo.getPeriod(), TimeUnit.MILLISECONDS);
+        map.put(taskInfo.getId(), scheduledFuture);
         //保存任务信息
-        ScheduledFutureDto scheduledFutureDto = new ScheduledFutureDto();
-        scheduledFutureDto.setPeriodic(true);
-        scheduledFutureDto.setTaskDto(taskDto);
-        scheduledFutureDto.setNextExecutionTime(System.currentTimeMillis() + initialDelay);
-        redisUtil.hPut(appName, scheduledFutureDto.getTaskDto().getTaskId(), JSON.toJSONString(scheduledFutureDto));
-        sendMessage(IncidentEnum.START.getCode(), RespJson.success(taskDto));
+        taskInfo.setPeriodic(true);
+        taskInfo.setNextExecutionTime(System.currentTimeMillis() + initialDelay);
+        taskInfo.setAppName(appName);
+        redisUtil.hPut(appName, taskInfo.getId(), JSON.toJSONString(taskInfo));
+        //持久化
+        if (persistence && millisecondDiff == null) {
+            taskInfoService.saveItem(taskInfo);
+        }
+        sendMessage(IncidentEnum.START.getCode(), RespJson.success(taskInfo));
     }
 
     /**
@@ -179,21 +204,23 @@ public class BaseScheduledExecutorService {
      */
     public void stop(String taskId, boolean forcedStop) {
         if (map.containsKey(taskId)) {
-            boolean flag;
             try {
                 ScheduledFuture<?> scheduledFuture = map.get(taskId);
                 scheduledFuture.cancel(forcedStop);
-                ScheduledFutureDto scheduledFutureDto = JSON.parseObject(redisUtil.hGet(appName, taskId).toString(), ScheduledFutureDto.class);
-                if (scheduledFutureDto != null) {
-                    scheduledFutureDto.setCancelled(true);
-                    redisUtil.hPut(appName, taskId, JSON.toJSONString(scheduledFutureDto));
+                TaskInfo taskInfo = JSON.parseObject(redisUtil.hGet(appName, taskId).toString(), TaskInfo.class);
+                if (taskInfo != null) {
+                    taskInfo.setCancelled(true);
+                    redisUtil.hPut(appName, taskId, JSON.toJSONString(taskInfo));
+                    //持久化
+                    if (persistence) {
+                        taskInfoService.saveItem(taskInfo);
+                    }
                 }
-                flag = true;
+                sendMessage(IncidentEnum.STOP.getCode(), RespJson.success(taskInfo));
             } catch (Exception e) {
                 log.error("任务->{}停止失败，错误信息->{}", taskId, e.getMessage());
-                flag = false;
+                sendMessage(IncidentEnum.ERROR.getCode(), RespJson.error(taskId.concat("->").concat(e.getMessage())));
             }
-            sendMessage(IncidentEnum.STOP.getCode(), RespJson.state(flag));
         }
     }
 
@@ -205,18 +232,21 @@ public class BaseScheduledExecutorService {
      */
     public void remove(String taskId, boolean forcedStop) {
         if (map.containsKey(taskId)) {
-            boolean flag;
             try {
                 ScheduledFuture<?> scheduledFuture = map.get(taskId);
                 scheduledFuture.cancel(forcedStop);
+                TaskInfo taskInfo = JSON.parseObject(redisUtil.hGet(appName, taskId).toString(), TaskInfo.class);
                 map.remove(taskId);
                 redisUtil.hDelete(appName, taskId);
-                flag = true;
+                //持久化
+                if (persistence) {
+                    taskInfoService.deleteItem(taskId);
+                }
+                sendMessage(IncidentEnum.REMOVE.getCode(), RespJson.success(taskInfo));
             } catch (Exception e) {
                 log.error("任务->{}删除失败，错误信息->{}", taskId, e.getMessage());
-                flag = false;
+                sendMessage(IncidentEnum.ERROR.getCode(), RespJson.error(taskId.concat("->").concat(e.getMessage())));
             }
-            sendMessage(IncidentEnum.STOP.getCode(), RespJson.state(flag));
         }
     }
 
@@ -230,53 +260,53 @@ public class BaseScheduledExecutorService {
             boolean flag;
             try {
                 ScheduledFuture<?> scheduledFuture = map.get(taskId);
-                ScheduledFutureDto scheduledFutureDto = JSON.parseObject(redisUtil.hGet(appName, taskId).toString(), ScheduledFutureDto.class);
-                if (scheduledFutureDto != null) {
-                    scheduledFutureDto.setCancelled(scheduledFuture.isCancelled());
-                    scheduledFutureDto.setCancelled(scheduledFuture.isDone());
-                    redisUtil.hPut(appName, taskId, JSON.toJSONString(scheduledFutureDto));
+                TaskInfo taskInfo = JSON.parseObject(redisUtil.hGet(appName, taskId).toString(), TaskInfo.class);
+                if (taskInfo != null) {
+                    taskInfo.setCancelled(scheduledFuture.isCancelled());
+                    taskInfo.setCancelled(scheduledFuture.isDone());
+                    redisUtil.hPut(appName, taskId, JSON.toJSONString(taskInfo));
+                    //持久化
+                    if (persistence) {
+                        taskInfoService.saveItem(taskInfo);
+                    }
                 }
-                flag = true;
+                sendMessage(IncidentEnum.UPDATE_STATUS.getCode(), RespJson.success(taskInfo));
             } catch (Exception e) {
                 log.error("任务->{}状态更新失败，错误信息->{}", taskId, e.getMessage());
-                flag = false;
+                sendMessage(IncidentEnum.UPDATE_STATUS.getCode(), RespJson.error(taskId.concat("->").concat(e.getMessage())));
             }
-            sendMessage(IncidentEnum.STOP.getCode(), RespJson.state(flag));
         }
     }
 
     /**
      * 重启任务
      *
-     * @param scheduledFutureDto 任务信息
+     * @param taskInfo 任务信息
      */
-    public void restart(ScheduledFutureDto scheduledFutureDto) {
-        //过滤掉已取消的任务
-        if (!scheduledFutureDto.isCancelled()) {
-            //获取下一次执行时间和当前相差毫秒数
-            long millisecondDiff = scheduledFutureDto.getNextExecutionTime() - System.currentTimeMillis();
-            //判断是否是循环任务
-            if (scheduledFutureDto.isPeriodic()) {
-                //任务未过期
-                if (millisecondDiff > 0) {
-                    //根据剩余延迟时间执行任务
-                    startLoop(scheduledFutureDto.getTaskDto(), millisecondDiff);
-                } else {
-                    //计算下一次执行延迟时间
-                    long periodMultiple = Math.abs(millisecondDiff) / scheduledFutureDto.getTaskDto().getPeriod();
-                    long periodRemainder = Math.abs(millisecondDiff) % scheduledFutureDto.getTaskDto().getPeriod();
-                    if (periodRemainder > 0) {
-                        periodMultiple += 1;
-                    }
-                    scheduledFutureDto.setNextExecutionTime(scheduledFutureDto.getNextExecutionTime() + periodMultiple * scheduledFutureDto.getTaskDto().getPeriod());
-                    millisecondDiff = scheduledFutureDto.getNextExecutionTime() - System.currentTimeMillis();
-                    startLoop(scheduledFutureDto.getTaskDto(), millisecondDiff);
-                }
+    public void restart(TaskInfo taskInfo) {
+        //获取下一次执行时间和当前相差毫秒数
+        long millisecondDiff = taskInfo.getNextExecutionTime() - System.currentTimeMillis();
+        //判断是否是循环任务
+        if (taskInfo.isPeriodic()) {
+            //任务未过期
+            if (millisecondDiff > 0) {
+                //根据剩余延迟时间执行任务
+                startLoop(taskInfo, millisecondDiff);
             } else {
-                //任务未完成，且未过期
-                if (!scheduledFutureDto.isDone() && millisecondDiff > 0) {
-                    startOnce(scheduledFutureDto.getTaskDto(), millisecondDiff);
+                //计算下一次执行延迟时间
+                long periodMultiple = Math.abs(millisecondDiff) / taskInfo.getPeriod();
+                long periodRemainder = Math.abs(millisecondDiff) % taskInfo.getPeriod();
+                if (periodRemainder > 0) {
+                    periodMultiple += 1;
                 }
+                taskInfo.setNextExecutionTime(taskInfo.getNextExecutionTime() + periodMultiple * taskInfo.getPeriod());
+                millisecondDiff = taskInfo.getNextExecutionTime() - System.currentTimeMillis();
+                startLoop(taskInfo, millisecondDiff);
+            }
+        } else {
+            //未过期
+            if (millisecondDiff > 0) {
+                startOnce(taskInfo, millisecondDiff);
             }
         }
     }
@@ -292,21 +322,21 @@ public class BaseScheduledExecutorService {
         send(restTemplate, entity);
     }
 
-    private void send(RestTemplate restTemplate, HttpEntity<String> entity){
+    private void send(RestTemplate restTemplate, HttpEntity<String> entity) {
         Set<String> businessNameSet = redisUtil.hKeys(businessName).stream().map(Object::toString).collect(Collectors.toSet());
-        if (!businessNameSet.isEmpty()){
+        if (!businessNameSet.isEmpty()) {
             Random random = new Random();
             String businessNameItem = businessNameSet.toArray(new String[0])[random.nextInt(businessNameSet.size())];
             String ip = redisUtil.hGet(businessName, businessNameItem).toString();
             ResponseEntity<String> exchange;
             try {
                 exchange = restTemplate.exchange("http://".concat(ip).concat(callback), HttpMethod.POST, entity, String.class);
-                if (!"success".equals(exchange.getBody())){
+                if (!"success".equals(exchange.getBody())) {
                     redisUtil.hDelete(businessName, businessNameItem);
                     log.error("业务系统节点->{}响应失败，消息已转发下一节点", businessNameItem);
                     send(restTemplate, entity);
                 }
-            }catch (Exception e){
+            } catch (Exception e) {
                 redisUtil.hDelete(businessName, businessNameItem);
                 log.error("业务系统节点->{}响应失败，消息已转发下一节点", businessNameItem);
                 send(restTemplate, entity);

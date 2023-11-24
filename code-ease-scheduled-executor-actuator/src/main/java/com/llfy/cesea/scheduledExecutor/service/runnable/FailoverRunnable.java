@@ -2,15 +2,13 @@ package com.llfy.cesea.scheduledExecutor.service.runnable;
 
 import com.alibaba.fastjson.JSON;
 import com.llfy.cesea.core.redis.ConstantConfiguration;
-import com.llfy.cesea.scheduledExecutor.service.BaseScheduledExecutorService;
-import com.llfy.cesea.scheduledExecutor.dto.MessageDto;
-import com.llfy.cesea.scheduledExecutor.dto.ScheduledFutureDto;
 import com.llfy.cesea.core.redis.enums.IncidentEnum;
-import com.llfy.cesea.utils.RedisUtil;
+import com.llfy.cesea.scheduledExecutor.dto.MessageDto;
+import com.llfy.cesea.scheduledExecutor.entity.TaskInfo;
+import com.llfy.cesea.scheduledExecutor.service.BaseScheduledExecutorService;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
 
 import java.util.*;
@@ -27,42 +25,21 @@ import java.util.stream.Collectors;
 @Component
 public class FailoverRunnable implements Runnable {
 
-    private String actuatorName;
-
-    private String appName;
-
-    private long appHeartbeatInterval;
-
-    private RedisUtil redisUtil;
-
-    private BaseScheduledExecutorService baseScheduledExecutorService;
-
-    private StringRedisTemplate stringRedisTemplate;
+    private BaseScheduledExecutorService base;
 
     public FailoverRunnable() {
     }
 
-    public FailoverRunnable(
-            String actuatorName,
-            String appName,
-            long appHeartbeatInterval,
-            RedisUtil redisUtil,
-            BaseScheduledExecutorService baseScheduledExecutorService,
-            StringRedisTemplate stringRedisTemplate) {
-        this.actuatorName = actuatorName;
-        this.appName = appName;
-        this.appHeartbeatInterval = appHeartbeatInterval;
-        this.redisUtil = redisUtil;
-        this.baseScheduledExecutorService = baseScheduledExecutorService;
-        this.stringRedisTemplate = stringRedisTemplate;
+    public FailoverRunnable(BaseScheduledExecutorService base) {
+        this.base = base;
     }
 
     @Override
     public void run() {
         //获取执行器列表
-        Set<String> appNames = redisUtil.hKeys(actuatorName).stream().map(Object::toString).collect(Collectors.toSet());
+        Set<String> appNames = base.redisUtil.hKeys(base.actuatorName).stream().map(Object::toString).collect(Collectors.toSet());
         //需要转移的任务集合
-        List<ScheduledFutureDto> scheduledFutureDtoList = new ArrayList<>();
+        List<TaskInfo> taskInfoList = new ArrayList<>();
         //宕机的执行器列表
         Set<String> downAppName = new HashSet<>();
         //正常的执行器列表
@@ -70,41 +47,50 @@ public class FailoverRunnable implements Runnable {
         //循环执行器列表
         for (String appName : appNames) {
             //验证执行器心跳
-            if (Boolean.FALSE.equals(redisUtil.hasKey(actuatorName.concat("-").concat("heartbeat:").concat(appName)))) {
+            if (Boolean.FALSE.equals(base.redisUtil.hasKey(base.actuatorName.concat("-").concat("heartbeat:").concat(appName)))) {
                 //添加到需要转移的任务集合中
-                scheduledFutureDtoList.addAll(JSON.parseArray(redisUtil.hValues(appName).toString(), ScheduledFutureDto.class));
+                taskInfoList.addAll(JSON.parseArray(base.redisUtil.hValues(appName).toString(), TaskInfo.class).stream().filter(taskInfo -> {
+                    if (!taskInfo.isCancelled()) {
+                        if (taskInfo.isPeriodic()) {
+                            return true;
+                        } else return !taskInfo.isDone();
+                    } else {
+                        return false;
+                    }
+                }).collect(Collectors.toList()));
                 //添加到宕机的执行器列表
                 downAppName.add(appName);
                 //删除宕机的执行器任务集合
-                redisUtil.hDelete(appName, scheduledFutureDtoList.stream().map(scheduledFutureDto -> scheduledFutureDto.getTaskDto().getTaskId()).toArray());
+                base.redisUtil.hDelete(appName, taskInfoList.stream().map(TaskInfo::getId).toArray());
                 //删除宕机的执行器
-                redisUtil.hDelete("actuator", appName);
+                base.redisUtil.hDelete(base.actuatorName, appName);
             } else {
                 //添加到正常的执行器列表
                 normalAppName.add(appName);
             }
         }
-        if (!normalAppName.isEmpty() && !downAppName.isEmpty() && !scheduledFutureDtoList.isEmpty()) {
+        if (!normalAppName.isEmpty() && !downAppName.isEmpty() && !taskInfoList.isEmpty()) {
             Random random = new Random();
-            Map<String, List<ScheduledFutureDto>> transferMap = new HashMap<>();
+            Map<String, List<TaskInfo>> transferMap = new HashMap<>();
             //分发任务到正常的执行器
-            for (ScheduledFutureDto scheduledFutureDto : scheduledFutureDtoList) {
-                List<ScheduledFutureDto> temp = new ArrayList<>();
+            for (TaskInfo taskInfo : taskInfoList) {
+                List<TaskInfo> temp = new ArrayList<>();
                 //随机获取一个正常的执行器
                 String appName = normalAppName.toArray(new String[0])[random.nextInt(normalAppName.size())];
                 if (transferMap.containsKey(appName)) {
                     temp = transferMap.get(appName);
                 }
-                temp.add(scheduledFutureDto);
+                taskInfo.setAppName(appName);
+                temp.add(taskInfo);
                 transferMap.put(appName, temp);
             }
             //发布转移消息
             for (String appName : transferMap.keySet()) {
                 MessageDto messageDto = new MessageDto();
                 messageDto.setAppName(appName);
-                messageDto.setScheduledFutureDtoList(transferMap.get(appName));
+                messageDto.setTaskInfoList(transferMap.get(appName));
                 messageDto.setIncident(IncidentEnum.TRANSFER.getCode());
-                stringRedisTemplate.convertAndSend(ConstantConfiguration.SCHEDULED_EXECUTOR, JSON.toJSONString(messageDto));
+                base.stringRedisTemplate.convertAndSend(ConstantConfiguration.SCHEDULED_EXECUTOR, JSON.toJSONString(messageDto));
             }
 
         }

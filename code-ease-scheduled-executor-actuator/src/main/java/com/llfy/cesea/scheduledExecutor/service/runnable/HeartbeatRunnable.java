@@ -1,6 +1,6 @@
 package com.llfy.cesea.scheduledExecutor.service.runnable;
 
-import com.llfy.cesea.utils.RedisUtil;
+import com.llfy.cesea.scheduledExecutor.service.BaseScheduledExecutorService;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
@@ -20,37 +20,25 @@ import java.util.concurrent.TimeUnit;
 @Component
 public class HeartbeatRunnable implements Runnable {
 
-    private String actuatorName;
-
-    private String appName;
-
-    private long appHeartbeatInterval;
-
-    private RedisUtil redisUtil;
-
-    private String port;
+    private BaseScheduledExecutorService base;
 
     public HeartbeatRunnable() {
     }
 
-    public HeartbeatRunnable(
-            String actuatorName,
-            String appName,
-            long appHeartbeatInterval,
-            RedisUtil redisUtil,
-            String port) {
-        this.actuatorName = actuatorName;
-        this.appName = appName;
-        this.appHeartbeatInterval = appHeartbeatInterval;
-        this.redisUtil = redisUtil;
-        this.port = port;
+    public HeartbeatRunnable(BaseScheduledExecutorService base) {
+        this.base = base;
     }
 
     @Override
     public void run() {
         //注册执行器节点
-        redisUtil.hPut(actuatorName, appName, InetAddress.getLoopbackAddress().getHostAddress().concat(":").concat(port));
-        redisUtil.setEx(actuatorName.concat("-").concat("heartbeat:").concat(appName), InetAddress.getLoopbackAddress().getHostAddress(), appHeartbeatInterval, TimeUnit.MILLISECONDS);
-        log.info("执行器{}心跳正常", appName);
+        String ip = InetAddress.getLoopbackAddress().getHostAddress().concat(":").concat(base.port);
+        base.redisUtil.hPut(base.actuatorName, base.appName, ip);
+        base.redisUtil.setEx(base.actuatorName.concat("-").concat("heartbeat:").concat(base.appName), ip, base.appHeartbeatInterval, TimeUnit.MILLISECONDS);
+        //持久化
+        if (base.persistence) {
+            base.actuatorInfoService.saveItem(base.appName, ip);
+        }
+        log.info("执行器{}心跳正常", base.appName);
     }
 }

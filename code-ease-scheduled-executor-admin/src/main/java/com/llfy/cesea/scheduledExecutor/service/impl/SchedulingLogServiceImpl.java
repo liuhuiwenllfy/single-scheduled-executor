@@ -1,6 +1,9 @@
 package com.llfy.cesea.scheduledExecutor.service.impl;
 
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.llfy.cesea.scheduledExecutor.dto.SchedulingLogDto;
 import com.llfy.cesea.scheduledExecutor.entity.SchedulingLog;
 import com.llfy.cesea.scheduledExecutor.mapper.SchedulingLogMapper;
 import com.llfy.cesea.scheduledExecutor.service.ISchedulingLogService;
@@ -17,4 +20,8 @@ import org.springframework.stereotype.Service;
 @Service
 public class SchedulingLogServiceImpl extends ServiceImpl<SchedulingLogMapper, SchedulingLog> implements ISchedulingLogService {
 
+    @Override
+    public IPage<SchedulingLog> getByPage(Page<SchedulingLog> page, SchedulingLogDto schedulingLogDto) {
+        return baseMapper.getByPage(page, schedulingLogDto);
+    }
 }

@@ -1,7 +1,9 @@
 package com.llfy.cesea.scheduledExecutor.mapper;
 
+
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.llfy.cesea.scheduledExecutor.entity.TaskInfo;
+import org.apache.ibatis.annotations.Mapper;
 
 /**
  * <p>
@@ -11,6 +13,7 @@ import com.llfy.cesea.scheduledExecutor.entity.TaskInfo;
  * @author LLFY
  * @since 2023-11-23
  */
+@Mapper
 public interface TaskInfoMapper extends BaseMapper<TaskInfo> {
 
 }

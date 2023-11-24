@@ -10,7 +10,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
  * @author 刘凌枫羽工作室
  */
 @SpringBootApplication
-@MapperScan("com.llfy.cesea.scheduledExecutor.*.mapper")
+@MapperScan("com.llfy.cesea.*.mapper")
 public class CodeEaseScheduledExecutorActuatorApplication {
     public static void main(String[] args) {
         SpringApplication.run(CodeEaseScheduledExecutorActuatorApplication.class, args);

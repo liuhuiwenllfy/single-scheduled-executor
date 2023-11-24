@@ -1,13 +1,13 @@
 package com.llfy.cesea.scheduledExecutor;
 
 import com.alibaba.fastjson.JSON;
+import com.llfy.cesea.scheduledExecutor.entity.TaskInfo;
 import com.llfy.cesea.scheduledExecutor.service.BaseScheduledExecutorService;
-import com.llfy.cesea.scheduledExecutor.dto.ScheduledFutureDto;
-import com.llfy.cesea.utils.RedisUtil;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * 定时器初始化
@@ -17,19 +17,11 @@ import java.util.List;
 @Component
 public class ScheduledExecutorInitService {
 
-    private final RedisUtil redisUtil;
-
-    private final String appName;
-
-    private final BaseScheduledExecutorService baseScheduledExecutorService;
+    private final BaseScheduledExecutorService base;
 
     public ScheduledExecutorInitService(
-            @Value("${app.name}") String appName,
-            RedisUtil redisUtil,
-            BaseScheduledExecutorService baseScheduledExecutorService) {
-        this.appName = appName;
-        this.redisUtil = redisUtil;
-        this.baseScheduledExecutorService = baseScheduledExecutorService;
+            BaseScheduledExecutorService base) {
+        this.base = base;
     }
 
     /**
@@ -37,13 +29,34 @@ public class ScheduledExecutorInitService {
      */
     public void initializeTask() {
         //启动心跳检测
-        baseScheduledExecutorService.heartbeatDetection();
+        base.heartbeatDetection();
         //故障转移检测
-        baseScheduledExecutorService.failover();
+        base.failover();
         //获取缓存池中当前机器所有任务
-        List<ScheduledFutureDto> scheduledFutureDtoList = JSON.parseArray(redisUtil.hValues(appName).toString(), ScheduledFutureDto.class);
-        for (ScheduledFutureDto scheduledFutureDto : scheduledFutureDtoList) {
-            baseScheduledExecutorService.restart(scheduledFutureDto);
+        List<String> idList = new ArrayList<>();
+        //获取需要启动的任务
+        List<TaskInfo> taskInfoList = JSON.parseArray(base.redisUtil.hValues(base.appName).toString(), TaskInfo.class).stream().filter(taskInfo -> {
+            if (!taskInfo.isCancelled()) {
+                if (taskInfo.isPeriodic()) {
+                    idList.add(taskInfo.getId());
+                    return true;
+                } else if (!taskInfo.isDone()) {
+                    idList.add(taskInfo.getId());
+                    return true;
+                } else {
+                    return false;
+                }
+            } else {
+                return false;
+            }
+        }).collect(Collectors.toList());
+        List<TaskInfo> persistenceTaskInfoList = new ArrayList<>();
+        if (base.persistence) {
+            persistenceTaskInfoList = base.taskInfoService.getRestartListExcludeAppointTask(idList);
+        }
+        taskInfoList.addAll(persistenceTaskInfoList);
+        for (TaskInfo taskInfo : taskInfoList) {
+            base.restart(taskInfo);
         }
 
     }

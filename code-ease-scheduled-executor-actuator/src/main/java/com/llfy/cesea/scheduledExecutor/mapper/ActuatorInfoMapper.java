@@ -1,7 +1,7 @@
 package com.llfy.cesea.scheduledExecutor.mapper;
 
-import com.llfy.cesea.scheduledExecutor.entity.ActuatorInfo;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
+import com.llfy.cesea.scheduledExecutor.entity.ActuatorInfo;
 
 /**
  * <p>

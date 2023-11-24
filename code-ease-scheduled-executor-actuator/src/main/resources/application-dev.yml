@@ -39,3 +39,4 @@ app:
   name: cluster-2 #执行器名称
   heartbeat:
     interval: 5000 #执行器心跳检测
+persistence: true #持久化，mysql保存一份信息，双重保障

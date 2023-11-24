@@ -17,12 +17,4 @@
         <result column="tenant_id" property="tenantId"/>
     </resultMap>
 
-    <select id="getRestartListExcludeAppointTask"
-            resultType="com.llfy.cesea.scheduledExecutor.entity.TaskInfo">
-        select *
-        from s_task_info
-        where cancelled = false
-          and (periodic = false and done = false)
-    </select>
-
 </mapper>

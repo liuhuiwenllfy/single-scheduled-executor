@@ -1,11 +1,9 @@
 package com.llfy.cesea.scheduledExecutor.service.runnable;
 
 import com.alibaba.fastjson.JSON;
-import com.llfy.cesea.scheduledExecutor.service.BaseScheduledExecutorService;
-import com.llfy.cesea.scheduledExecutor.dto.ScheduledFutureDto;
-import com.llfy.cesea.scheduledExecutor.dto.TaskDto;
 import com.llfy.cesea.core.redis.enums.IncidentEnum;
-import com.llfy.cesea.utils.RedisUtil;
+import com.llfy.cesea.scheduledExecutor.entity.TaskInfo;
+import com.llfy.cesea.scheduledExecutor.service.BaseScheduledExecutorService;
 import com.llfy.cesea.utils.RespJson;
 import lombok.Getter;
 import lombok.Setter;
@@ -23,43 +21,43 @@ import org.springframework.stereotype.Component;
 @Component
 public class BaseRunnable implements Runnable {
 
-    private String appName;
+    private BaseScheduledExecutorService base;
 
-    private RedisUtil redisUtil;
-
-    private TaskDto taskDto;
-
-    private BaseScheduledExecutorService baseScheduledExecutorService;
+    private String id;
 
     public BaseRunnable() {
     }
 
-    public BaseRunnable(
-            String appName,
-            TaskDto taskDto,
-            RedisUtil redisUtil,
-            BaseScheduledExecutorService baseScheduledExecutorService) {
-        this.appName = appName;
-        this.taskDto = taskDto;
-        this.redisUtil = redisUtil;
-        this.baseScheduledExecutorService = baseScheduledExecutorService;
+    public BaseRunnable(BaseScheduledExecutorService base, String id) {
+        this.id = id;
+        this.base = base;
     }
 
     @Override
     public void run() {
         //手动变更缓存池中任务完成状态（未完成）
-        ScheduledFutureDto scheduledFutureDto = JSON.parseObject(redisUtil.hGet(appName, taskDto.getTaskId()).toString(), ScheduledFutureDto.class);
-        if (scheduledFutureDto != null) {
-            scheduledFutureDto.setDone(false);
-            redisUtil.hPut(appName, taskDto.getTaskId(), JSON.toJSONString(scheduledFutureDto));
-            log.info("执行任务id->{}", taskDto.getTaskId());
-            baseScheduledExecutorService.sendMessage(IncidentEnum.CARRY_OUT.getCode(), RespJson.success(scheduledFutureDto.getTaskDto()));
-            //手动变更缓存池中任务完成状态（已完成）
-            scheduledFutureDto.setDone(true);
-            if (scheduledFutureDto.isPeriodic()) {
-                scheduledFutureDto.setNextExecutionTime(scheduledFutureDto.getNextExecutionTime() + taskDto.getPeriod());
+        TaskInfo taskInfo = JSON.parseObject(base.redisUtil.hGet(base.appName, id).toString(), TaskInfo.class);
+        if (taskInfo != null) {
+            taskInfo.setDone(false);
+            base.redisUtil.hPut(base.appName, id, JSON.toJSONString(taskInfo));
+            //持久化
+            String schedulingLogId = null;
+            if (base.persistence) {
+                base.taskInfoService.saveItem(taskInfo);
+                schedulingLogId = base.schedulingLogService.insertItem(base.appName, taskInfo);
             }
-            redisUtil.hPut(appName, taskDto.getTaskId(), JSON.toJSONString(scheduledFutureDto));
+            log.info("执行任务id->{}", id);
+            base.sendMessage(IncidentEnum.CARRY_OUT.getCode(), RespJson.success(taskInfo));
+            //手动变更缓存池中任务完成状态（已完成）
+            taskInfo.setDone(true);
+            if (taskInfo.isPeriodic()) {
+                taskInfo.setNextExecutionTime(taskInfo.getNextExecutionTime() + taskInfo.getPeriod());
+            }
+            base.redisUtil.hPut(base.appName, id, JSON.toJSONString(taskInfo));
+            if (base.persistence) {
+                base.taskInfoService.saveItem(taskInfo);
+                base.schedulingLogService.updateItem(schedulingLogId, taskInfo);
+            }
         }
     }
 }

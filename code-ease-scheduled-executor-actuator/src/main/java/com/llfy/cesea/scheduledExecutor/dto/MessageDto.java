@@ -1,5 +1,6 @@
 package com.llfy.cesea.scheduledExecutor.dto;
 
+import com.llfy.cesea.scheduledExecutor.entity.TaskInfo;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -17,7 +18,7 @@ public class MessageDto {
     /**
      * 任务id
      */
-    private String taskId;
+    private String id;
 
     /**
      * 执行器名称
@@ -27,12 +28,7 @@ public class MessageDto {
     /**
      * 任务信息
      */
-    private List<TaskDto> taskDtoList;
-
-    /**
-     * 任务信息
-     */
-    private List<ScheduledFutureDto> scheduledFutureDtoList;
+    private List<TaskInfo> taskInfoList;
 
     /**
      * 消息类型

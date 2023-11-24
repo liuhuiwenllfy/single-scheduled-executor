@@ -1,7 +1,9 @@
 package com.llfy.cesea.scheduledExecutor.service;
 
-import com.llfy.cesea.scheduledExecutor.entity.TaskInfo;
 import com.baomidou.mybatisplus.extension.service.IService;
+import com.llfy.cesea.scheduledExecutor.entity.TaskInfo;
+
+import java.util.List;
 
 /**
  * <p>
@@ -12,5 +14,28 @@ import com.baomidou.mybatisplus.extension.service.IService;
  * @since 2023-11-23
  */
 public interface ITaskInfoService extends IService<TaskInfo> {
+
+    /**
+     * 新增任务
+     *
+     * @param taskInfo 入参
+     */
+    void saveItem(TaskInfo taskInfo);
+
+    /**
+     * 修改任务
+     *
+     * @param id 入参
+     */
+    void deleteItem(String id);
+
+    /**
+     * 获取任务并排除指定的任务
+     *
+     * @param idList 排除的任务
+     * @return {@link List}
+     */
+    List<TaskInfo> getRestartListExcludeAppointTask(List<String> idList);
+
 
 }

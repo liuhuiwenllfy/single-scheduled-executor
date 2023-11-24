@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.llfy.cesea.scheduledExecutor.mapper.SchedulingLogMapper">
+
+    <!-- 通用查询映射结果 -->
+    <resultMap id="BaseResultMap" type="com.llfy.cesea.scheduledExecutor.entity.SchedulingLog">
+        <id column="id" property="id"/>
+        <result column="task_id" property="taskId"/>
+        <result column="app_name" property="appName"/>
+        <result column="task_param" property="taskParam"/>
+        <result column="done" property="done"/>
+        <result column="response_result" property="responseResult"/>
+        <result column="create_time" property="createTime"/>
+        <result column="tenant_id" property="tenantId"/>
+    </resultMap>
+    <select id="getByPage" resultType="com.llfy.cesea.scheduledExecutor.entity.SchedulingLog">
+        select *
+        from s_scheduling_log
+        where 1=1
+        <if test="schedulingLogDto.taskId != null and schedulingLogDto.taskId != ''">
+            and task_id = #{schedulingLogDto.taskId}
+        </if>
+        <if test="schedulingLogDto.appName != null and schedulingLogDto.appName != ''">
+            and app_name = #{schedulingLogDto.appName}
+        </if>
+        <if test="schedulingLogDto.done != null">
+            and done = #{schedulingLogDto.done}
+        </if>
+        <if test="schedulingLogDto.responseResult != null and schedulingLogDto.responseResult != ''">
+            and response_result like concat('%', #{schedulingLogDto.responseResult},'%')
+        </if>
+        <if test="schedulingLogDto.startCreateTime != null and schedulingLogDto.startCreateTime != ''">
+            and create_time &gt;= #{schedulingLogDto.startCreateTime}
+        </if>
+        <if test="schedulingLogDto.endCreateTime != null and schedulingLogDto.endCreateTime != ''">
+            and create_time &lt;= #{schedulingLogDto.endCreateTime}
+        </if>
+        <if test="schedulingLogDto.tenantId != null and schedulingLogDto.tenantId != ''">
+            and tenant_id = #{schedulingLogDto.tenantId}
+        </if>
+    </select>
+
+</mapper>

@@ -19,17 +19,13 @@ public class TaskDto implements Serializable {
      * 任务id
      */
     @NotBlank(message = "任务id不能为空")
-    private String taskId;
+    private String id;
 
     /**
-     * 任务携带参数
+     * 标题
      */
-    private String taskParam;
-
-    /**
-     * 延迟执行时间；毫秒
-     */
-    private long initialDelay;
+    @NotBlank(message = "标题不能为空")
+    private String title;
 
     /**
      * 是否为循环任务
@@ -37,8 +33,18 @@ public class TaskDto implements Serializable {
     private boolean periodic;
 
     /**
-     * 间隔时间；毫秒
+     * 延迟时间（毫秒）
+     */
+    private long initialDelay;
+
+    /**
+     * 间隔时间（毫秒）
      */
     private long period;
+
+    /**
+     * 任务携带参数
+     */
+    private String taskParam;
 
 }

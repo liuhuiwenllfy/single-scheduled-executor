@@ -2,12 +2,14 @@ package com.llfy.cesea.scheduledExecutor.service.impl;
 
 import com.alibaba.fastjson.JSON;
 import com.llfy.cesea.core.redis.ConstantConfiguration;
-import com.llfy.cesea.scheduledExecutor.enums.IncidentEnum;
 import com.llfy.cesea.scheduledExecutor.dto.MessageDto;
 import com.llfy.cesea.scheduledExecutor.dto.TaskDto;
+import com.llfy.cesea.scheduledExecutor.entity.TaskInfo;
+import com.llfy.cesea.scheduledExecutor.enums.IncidentEnum;
 import com.llfy.cesea.scheduledExecutor.service.IScheduledExecutorService;
 import com.llfy.cesea.utils.RedisUtil;
 import lombok.SneakyThrows;
+import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
@@ -50,9 +52,11 @@ public class ScheduledExecutorServiceImpl implements IScheduledExecutorService {
         String appName = appNames.toArray(new String[0])[random.nextInt(appNames.size())];
         //组装消息体
         MessageDto messageDto = new MessageDto();
-        messageDto.setTaskId(taskDto.getTaskId());
+        messageDto.setId(taskDto.getId());
+        TaskInfo taskInfo = new TaskInfo();
         messageDto.setAppName(appName);
-        messageDto.setTaskDtoList(Collections.singletonList(taskDto));
+        BeanUtils.copyProperties(taskDto, taskInfo);
+        messageDto.setTaskInfoList(Collections.singletonList(taskInfo));
         messageDto.setIncident(IncidentEnum.START.getCode());
         stringRedisTemplate.convertAndSend(ConstantConfiguration.SCHEDULED_EXECUTOR, JSON.toJSONString(messageDto));
     }
@@ -61,7 +65,7 @@ public class ScheduledExecutorServiceImpl implements IScheduledExecutorService {
     public void stop(String taskId) {
         //组装消息体
         MessageDto messageDto = new MessageDto();
-        messageDto.setTaskId(taskId);
+        messageDto.setId(taskId);
         messageDto.setIncident(IncidentEnum.STOP.getCode());
         stringRedisTemplate.convertAndSend(ConstantConfiguration.SCHEDULED_EXECUTOR, JSON.toJSONString(messageDto));
     }
@@ -70,7 +74,7 @@ public class ScheduledExecutorServiceImpl implements IScheduledExecutorService {
     public void remove(String taskId) {
         //组装消息体
         MessageDto messageDto = new MessageDto();
-        messageDto.setTaskId(taskId);
+        messageDto.setId(taskId);
         messageDto.setIncident(IncidentEnum.REMOVE.getCode());
         stringRedisTemplate.convertAndSend(ConstantConfiguration.SCHEDULED_EXECUTOR, JSON.toJSONString(messageDto));
     }
@@ -79,7 +83,7 @@ public class ScheduledExecutorServiceImpl implements IScheduledExecutorService {
     public void updateStatus(String taskId) {
         //组装消息体
         MessageDto messageDto = new MessageDto();
-        messageDto.setTaskId(taskId);
+        messageDto.setId(taskId);
         messageDto.setIncident(IncidentEnum.UPDATE_STATUS.getCode());
         stringRedisTemplate.convertAndSend(ConstantConfiguration.SCHEDULED_EXECUTOR, JSON.toJSONString(messageDto));
     }

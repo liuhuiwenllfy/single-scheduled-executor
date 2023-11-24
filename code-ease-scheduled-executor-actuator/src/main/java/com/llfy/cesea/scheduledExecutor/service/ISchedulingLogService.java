@@ -1,7 +1,8 @@
 package com.llfy.cesea.scheduledExecutor.service;
 
-import com.llfy.cesea.scheduledExecutor.entity.SchedulingLog;
 import com.baomidou.mybatisplus.extension.service.IService;
+import com.llfy.cesea.scheduledExecutor.entity.SchedulingLog;
+import com.llfy.cesea.scheduledExecutor.entity.TaskInfo;
 
 /**
  * <p>
@@ -13,4 +14,19 @@ import com.baomidou.mybatisplus.extension.service.IService;
  */
 public interface ISchedulingLogService extends IService<SchedulingLog> {
 
+    /**
+     * 新增日志
+     *
+     * @param appName  执行器名称
+     * @param taskInfo 入参
+     */
+    String insertItem(String appName, TaskInfo taskInfo);
+
+    /**
+     * 修改日志
+     *
+     * @param id       日志id
+     * @param taskInfo 入参
+     */
+    void updateItem(String id, TaskInfo taskInfo);
 }
