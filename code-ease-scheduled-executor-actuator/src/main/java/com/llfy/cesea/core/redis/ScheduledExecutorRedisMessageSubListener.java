@@ -13,6 +13,7 @@ import org.springframework.data.redis.connection.Message;
 import org.springframework.data.redis.connection.MessageListener;
 import org.springframework.stereotype.Component;
 
+import java.util.Date;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -70,6 +71,7 @@ public class ScheduledExecutorRedisMessageSubListener implements MessageListener
                         base.sendMessage(IncidentEnum.ERROR.getCode(), RespJson.error(taskInfo.getTitle().concat("->").concat("正在执行中")));
                         continue;
                     }
+                    taskInfo.setCreateTime(new Date());
                     if (!taskInfo.isPeriodic()) {
                         base.startOnce(taskInfo, null);
                     } else {
