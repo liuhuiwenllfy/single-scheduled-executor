@@ -9,8 +9,6 @@ COPY ./sa-app.jar /app/sa-app.jar
 # 设置后续指令的工作目录。
 WORKDIR /app
 # 为容器创建挂载点或声明卷。
-VOLUME /opt/single-application-framework/file
-# 为容器创建挂载点或声明卷。
 VOLUME /opt/single-application-framework/log
 # 在容器内部设置环境变量。
 ENV LT=/etc/localtime
