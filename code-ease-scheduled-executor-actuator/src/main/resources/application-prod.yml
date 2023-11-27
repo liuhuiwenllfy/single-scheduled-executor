@@ -8,9 +8,9 @@ spring:
       datasource:
         scheduled_task:
           driver-class-name: com.mysql.cj.jdbc.Driver
-          url: jdbc:mysql://XXX.XXX.XXX.XXX:XXXX/sa_scheduled_task_db?useUnicode=true&useSSL=false&characterEncoding=utf8&rewriteBatchedStatements=true&allowPublicKeyRetrieval=true&autoReconnect=true&failOverReadOnly=false
-          username: XXXX
-          password: XXXX
+          url: jdbc:mysql://XXX.XXX.XXX.XXX:3306/sa_scheduled_task_db?useUnicode=true&useSSL=false&characterEncoding=utf8&rewriteBatchedStatements=true&allowPublicKeyRetrieval=true&autoReconnect=true&failOverReadOnly=false
+          username: XXX
+          password: XXX
       druid: # 初始化大小，最小，最大
         initial-size: 5
         min-idle: 5
