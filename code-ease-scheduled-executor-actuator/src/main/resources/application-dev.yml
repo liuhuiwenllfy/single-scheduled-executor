@@ -8,9 +8,9 @@ spring:
       datasource:
         scheduled_task:
           driver-class-name: com.mysql.cj.jdbc.Driver
-          url: jdbc:mysql://154.8.144.189:23306/sa_scheduled_task_db?useUnicode=true&useSSL=false&characterEncoding=utf8&rewriteBatchedStatements=true&allowPublicKeyRetrieval=true&autoReconnect=true&failOverReadOnly=false
-          username: root
-          password: 1q@w3e4r
+          url: jdbc:mysql://XXX.XXX.XXX.XXX:XXXX/sa_scheduled_task_db?useUnicode=true&useSSL=false&characterEncoding=utf8&rewriteBatchedStatements=true&allowPublicKeyRetrieval=true&autoReconnect=true&failOverReadOnly=false
+          username: XXXX
+          password: XXXX
       druid: # 初始化大小，最小，最大
         initial-size: 5
         min-idle: 5
@@ -19,9 +19,9 @@ spring:
         time-between-eviction-runs-millis: 60000  # 配置间隔多久才进行一次检测，检测需要关闭的空闲连接，单位是毫秒
         min-evictable-idle-time-millis: 300000  # 配置一个连接在池中最小生存的时间，单位是毫秒
   redis: #redis参数配置
-    host: 154.8.144.189
-    port: 26379
-    password: 1q@w3e4r
+    host: XXX.XXX.XXX.XXX
+    port: 6379
+    password: XXX
     database: 0
 logging:
   level:
