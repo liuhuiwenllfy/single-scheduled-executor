@@ -1,7 +1,13 @@
 package com.llfy.cesea.scheduledExecutor.controller;
 
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.llfy.cesea.scheduledExecutor.dto.TaskDto;
+import com.llfy.cesea.scheduledExecutor.dto.TaskInfoPageDto;
+import com.llfy.cesea.scheduledExecutor.entity.TaskInfo;
 import com.llfy.cesea.scheduledExecutor.service.IScheduledExecutorService;
+import com.llfy.cesea.scheduledExecutor.service.ITaskInfoService;
+import com.llfy.cesea.utils.RespJson;
 import org.springframework.web.bind.annotation.*;
 
 /**
@@ -18,8 +24,23 @@ public class TaskInfoController {
 
     private final IScheduledExecutorService scheduledExecutorService;
 
-    public TaskInfoController(IScheduledExecutorService scheduledExecutorService) {
+    private final ITaskInfoService taskInfoService;
+
+    public TaskInfoController(IScheduledExecutorService scheduledExecutorService,
+                              ITaskInfoService taskInfoService) {
         this.scheduledExecutorService = scheduledExecutorService;
+        this.taskInfoService = taskInfoService;
+    }
+
+    /**
+     * 条件分页查询任务
+     *
+     * @param taskInfoPageDto 分页参数
+     * @return {@link RespJson}
+     */
+    @GetMapping("getByPage")
+    public RespJson<IPage<TaskInfo>> getByPage(Page<TaskInfo> page, TaskInfoPageDto taskInfoPageDto) {
+        return RespJson.success(taskInfoService.getByPage(page, taskInfoPageDto));
     }
 
     /**
