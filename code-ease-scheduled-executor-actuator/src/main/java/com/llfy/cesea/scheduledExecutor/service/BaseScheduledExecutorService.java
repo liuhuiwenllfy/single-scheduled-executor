@@ -257,7 +257,6 @@ public class BaseScheduledExecutorService {
      */
     public void updateStatus(String taskId) {
         if (map.containsKey(taskId)) {
-            boolean flag;
             try {
                 ScheduledFuture<?> scheduledFuture = map.get(taskId);
                 TaskInfo taskInfo = JSON.parseObject(redisUtil.hGet(appName, taskId).toString(), TaskInfo.class);
@@ -277,6 +276,38 @@ public class BaseScheduledExecutorService {
             }
         }
     }
+
+    /**
+     * 更新任务状态
+     *
+     * @param taskId 任务id
+     */
+    public void update(String taskId, TaskInfo newTaskInfo) {
+        if (map.containsKey(taskId)) {
+            try {
+                TaskInfo taskInfo = JSON.parseObject(redisUtil.hGet(appName, taskId).toString(), TaskInfo.class);
+                if (taskInfo != null) {
+                    taskInfo.setTitle(newTaskInfo.getTitle());
+                    taskInfo.setTaskParam(newTaskInfo.getTaskParam());
+                    if (taskInfo.isCancelled()) {
+                        taskInfo.setPeriodic(newTaskInfo.isPeriodic());
+                        taskInfo.setInitialDelay(newTaskInfo.getInitialDelay());
+                        taskInfo.setPeriod(newTaskInfo.getPeriod());
+                    }
+                    redisUtil.hPut(appName, taskId, JSON.toJSONString(taskInfo));
+                    //持久化
+                    if (persistence) {
+                        taskInfoService.saveItem(taskInfo);
+                    }
+                }
+                sendMessage(IncidentEnum.UPDATE.getCode(), RespJson.success(taskInfo));
+            } catch (Exception e) {
+                log.error("任务->{}任务更新失败，错误信息->{}", taskId, e.getMessage());
+                sendMessage(IncidentEnum.UPDATE.getCode(), RespJson.error(taskId.concat("->").concat(e.getMessage())));
+            }
+        }
+    }
+
 
     /**
      * 重启任务

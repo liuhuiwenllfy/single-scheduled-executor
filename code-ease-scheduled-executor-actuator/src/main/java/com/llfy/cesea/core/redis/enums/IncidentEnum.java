@@ -14,6 +14,7 @@ public enum IncidentEnum {
 
     /**
      * START->启动
+     * UPDATE->修改
      * CARRY_OUT->执行
      * STOP->停止
      * REMOVE->删除
@@ -22,6 +23,7 @@ public enum IncidentEnum {
      * ERROR->错误消息
      */
     START("START", "启动"),
+    UPDATE("UPDATE", "修改"),
     CARRY_OUT("CARRY_OUT", "执行"),
     STOP("STOP", "停止"),
     REMOVE("REMOVE", "删除"),

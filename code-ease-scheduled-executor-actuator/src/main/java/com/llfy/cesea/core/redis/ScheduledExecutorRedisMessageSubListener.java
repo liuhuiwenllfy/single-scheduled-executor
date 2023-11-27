@@ -80,6 +80,12 @@ public class ScheduledExecutorRedisMessageSubListener implements MessageListener
                 }
             }
         }
+        //修改
+        else if (IncidentEnum.UPDATE.getCode().equals(messageDto.getIncident())) {
+            if (!messageDto.getTaskInfoList().isEmpty()) {
+                base.update(messageDto.getId(), messageDto.getTaskInfoList().get(0));
+            }
+        }
         //停止
         else if (IncidentEnum.STOP.getCode().equals(messageDto.getIncident())) {
             base.stop(messageDto.getId(), false);
