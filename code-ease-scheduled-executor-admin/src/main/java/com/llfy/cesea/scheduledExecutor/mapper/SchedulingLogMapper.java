@@ -5,7 +5,6 @@ import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.llfy.cesea.scheduledExecutor.dto.SchedulingLogDto;
 import com.llfy.cesea.scheduledExecutor.entity.SchedulingLog;
-import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
 /**
@@ -16,7 +15,6 @@ import org.apache.ibatis.annotations.Param;
  * @author LLFY
  * @since 2023-11-23
  */
-@Mapper
 public interface SchedulingLogMapper extends BaseMapper<SchedulingLog> {
 
     /**
