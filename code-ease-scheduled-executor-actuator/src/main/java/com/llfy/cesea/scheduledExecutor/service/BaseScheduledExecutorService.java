@@ -188,6 +188,7 @@ public class BaseScheduledExecutorService {
         taskInfo.setPeriodic(true);
         taskInfo.setNextExecutionTime(System.currentTimeMillis() + initialDelay);
         taskInfo.setAppName(appName);
+        taskInfo.setCancelled(false);
         redisUtil.hPut(appName, taskInfo.getId(), JSON.toJSONString(taskInfo));
         //持久化
         if (persistence && millisecondDiff == null) {
