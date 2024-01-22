@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://maven.apache.org/POM/4.0.0"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>cn.liulingfengyu</groupId>
+        <artifactId>single-scheduled-executor</artifactId>
+        <version>1.0.0</version>
+    </parent>
+    <artifactId>single-common</artifactId>
+    <packaging>pom</packaging>
+
+    <description>single-common</description>
+
+    <modules>
+        <module>single-common-bom</module>
+        <module>single-common-redis</module>
+        <module>single-common-mybatis-plus</module>
+    </modules>
+</project>

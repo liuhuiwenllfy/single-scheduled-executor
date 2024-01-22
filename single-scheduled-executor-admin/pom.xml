@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://maven.apache.org/POM/4.0.0"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>cn.liulingfengyu</groupId>
+        <artifactId>single-scheduled-executor</artifactId>
+        <version>1.0.0</version>
+    </parent>
+
+    <artifactId>single-scheduled-executor-admin</artifactId>
+    <version>1.0.0</version>
+    <name>single-scheduled-executor-admin</name>
+    <description>single-scheduled-executor-admin</description>
+
+    <dependencies>
+        <dependency>
+            <groupId>cn.liulingfengyu</groupId>
+            <artifactId>single-common-mybatis-plus</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>cn.liulingfengyu</groupId>
+            <artifactId>single-common-redis</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>cn.liulingfengyu</groupId>
+            <artifactId>single-model-actuator</artifactId>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <!-- 生成jar包的名字，记得和Dockerfile文件里面的名字对应 -->
+        <finalName>${project.artifactId}</finalName>
+        <plugins>
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+                <configuration>
+                    <!--指定jar包输出位置-->
+                    <outputDirectory>../docker/single-scheduled-executor-admin</outputDirectory>
+                    <!-- 主启动类全类名 -->
+                    <mainClass>
+                        cn.liulingfengyu.scheduledTask.SingleScheduledExecutorAdminApplication
+                    </mainClass>
+                </configuration>
+                <executions>
+                    <execution>
+                        <goals>
+                            <!--可以把依赖的包都打包到生成的Jar包中-->
+                            <goal>repackage</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+</project>

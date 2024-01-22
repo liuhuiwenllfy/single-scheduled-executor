@@ -1,0 +1,6 @@
+spring:
+  profiles:
+    active: @profiles.active@
+mybatis-plus:
+  configuration:
+    log-impl: org.apache.ibatis.logging.slf4j.Slf4jImpl #mybatis日志配置

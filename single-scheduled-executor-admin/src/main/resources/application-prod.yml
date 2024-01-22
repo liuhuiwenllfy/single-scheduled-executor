@@ -1,0 +1,41 @@
+server:
+  port: 8006  #端口配置
+spring:
+  datasource: #配置数据库
+    dynamic:
+      primary: scheduled_task #设置默认的数据源或者数据源组,默认值即为master
+      strict: false #严格匹配数据源,默认false. true未匹配到指定数据源时抛异常,false使用默认数据源
+      datasource:
+        scheduled_task:
+          driver-class-name: com.mysql.cj.jdbc.Driver
+          url: jdbc:mysql://127.0.0.1:3306/sa_scheduled_task_db?useUnicode=true&useSSL=false&characterEncoding=utf8&rewriteBatchedStatements=true&allowPublicKeyRetrieval=true&autoReconnect=true&failOverReadOnly=false
+          username: root
+          password: 123456
+      druid: # 初始化大小，最小，最大
+        initial-size: 10
+        min-idle: 20
+        max-active: 100
+        max-wait: 60000 # 配置获取连接等待超时的时间
+        time-between-eviction-runs-millis: 30000  # 配置间隔多久才进行一次检测，检测需要关闭的空闲连接，单位是毫秒
+        min-evictable-idle-time-millis: 30000  # 配置一个连接在池中最小生存的时间，单位是毫秒
+        validation-query: SELECT 1
+        test-while-idle: true
+        test-on-borrow: false
+        test-on-return: false
+  redis: #redis参数配置
+    host: 127.0.0.1
+    port: 6379
+    password:
+    database: 0
+logging:
+  level:
+    cn.liulingfengyu.scheduledTask: debug  #日志级别
+  file:
+    path: /opt/app/log #日志输出路径
+business:
+  name: business #调度中心Hash列表在redis存储的key
+actuator:
+  name: actuator #执行器Hash列表在redis存储的key
+app:
+  address: http://10.0.8.10:8006
+  name: business-5 #业务系统名称
