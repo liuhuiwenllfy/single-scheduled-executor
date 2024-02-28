@@ -171,8 +171,10 @@ public class BaseScheduledExecutorService {
             //执行任务
             if (!taskInfo.isCancelled()) {
                 Runnable command = new BaseRunnable(this, taskInfo.getId());
-                ScheduledFuture<?> scheduledFuture = executor.schedule(command, initialDelay, TimeUnit.MILLISECONDS);
-                map.put(taskInfo.getId(), scheduledFuture);
+                if (!map.containsKey(taskInfo.getId()) || map.get(taskInfo.getId()).isCancelled() || map.get(taskInfo.getId()).isDone()) {
+                    ScheduledFuture<?> scheduledFuture = executor.schedule(command, initialDelay, TimeUnit.MILLISECONDS);
+                    map.put(taskInfo.getId(), scheduledFuture);
+                }
             }
             if (IncidentEnum.START.getCode().equals(incidentEnum)) {
                 sendMessage(IncidentEnum.START.getCode(), getTaskInfoBo(taskInfo), "启动成功");
