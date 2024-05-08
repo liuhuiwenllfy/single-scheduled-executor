@@ -30,6 +30,10 @@
             <groupId>cn.liulingfengyu</groupId>
             <artifactId>single-common-redis</artifactId>
         </dependency>
+        <dependency>
+            <groupId>cn.liulingfengyu</groupId>
+            <artifactId>single-common-tools</artifactId>
+        </dependency>
     </dependencies>
 
     <build>

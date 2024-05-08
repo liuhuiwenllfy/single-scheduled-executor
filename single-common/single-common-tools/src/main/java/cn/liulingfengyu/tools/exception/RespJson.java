@@ -45,7 +45,7 @@ public class RespJson<T> {
     }
 
     public static <T> RespJson<T> success() {
-        return new RespJson<>(200, "操作失败", true);
+        return new RespJson<>(200, "操作成功", true);
     }
 
     public static <T> RespJson<T> success(T data) {
@@ -57,7 +57,7 @@ public class RespJson<T> {
     }
 
     public static <T> RespJson<T> error() {
-        return new RespJson<>(500, "操作成功", false);
+        return new RespJson<>(500, "操作失败", false);
     }
 
     public static <T> RespJson<T> error(String msg) {

@@ -10,15 +10,15 @@ public class CallbackBo {
     /**
      * 回调类型
      */
-    String incident;
+    private String incident;
 
     /**
      * 任务信息
      */
-    TaskInfoBo taskInfoBo;
+    private TaskInfoBo taskInfoBo;
 
     /**
      * 错误信息
      */
-    String errorMsg;
+    private String errorMsg;
 }

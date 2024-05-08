@@ -13,13 +13,6 @@ VOLUME /opt/app/log
 # 在容器内部设置环境变量。
 ENV LT=/etc/localtime
 # 在构建过程中在镜像中执行命令。
-RUN ln -sf /usr/share/zoneinfo/Asia/Shanghai $LT \
-# 它将echo命令的输出写入到/etc/apk/repositories文件中
-&& echo 'https://mirrors.aliyun.com/alpine/v3.6/main' > /etc/apk/repositories \
-# 它将echo命令的输出追加到/etc/apk/repositories文件的末尾
-&& echo 'https://mirrors.aliyun.com/alpine/v3.6/community' >> /etc/apk/repositories \
-&& apk update \
-&& apk upgrade \
-&& apk --no-cache add ttf-dejavu fontconfig
+RUN ln -sf /usr/share/zoneinfo/Asia/Shanghai $LT
 # 指定容器创建时的默认命令。（可以被覆盖）
 CMD ["java", "-jar", "app.jar"]

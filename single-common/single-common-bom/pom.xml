@@ -24,22 +24,12 @@
             </dependency>
             <dependency>
                 <groupId>cn.liulingfengyu</groupId>
-                <artifactId>single-common-swagger</artifactId>
-                <version>${project.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>cn.liulingfengyu</groupId>
                 <artifactId>single-common-mongodb</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
                 <groupId>cn.liulingfengyu</groupId>
                 <artifactId>single-common-tools</artifactId>
-                <version>${project.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>cn.liulingfengyu</groupId>
-                <artifactId>single-common-aspect</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
