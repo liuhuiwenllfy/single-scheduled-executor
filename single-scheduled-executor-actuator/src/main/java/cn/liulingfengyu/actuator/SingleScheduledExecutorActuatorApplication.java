@@ -15,6 +15,7 @@ import org.springframework.context.annotation.ComponentScan;
 @MapperScan("cn.liulingfengyu.actuator.*.mapper")
 public class SingleScheduledExecutorActuatorApplication {
     public static void main(String[] args) {
+        System.setProperty("druid.mysql.usePingMethod", "false");
         SpringApplication.run(SingleScheduledExecutorActuatorApplication.class, args);
     }
 }

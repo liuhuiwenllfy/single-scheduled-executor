@@ -14,7 +14,10 @@
 
     <modules>
         <module>single-common-bom</module>
-        <module>single-common-redis</module>
         <module>single-common-mybatis-plus</module>
+        <module>single-common-redis</module>
+        <module>single-common-tools</module>
+        <module>single-common-rabbitmq</module>
     </modules>
+
 </project>

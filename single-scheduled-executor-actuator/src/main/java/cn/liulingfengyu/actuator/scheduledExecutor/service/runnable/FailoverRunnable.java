@@ -1,20 +1,22 @@
 package cn.liulingfengyu.actuator.scheduledExecutor.service.runnable;
 
-import cn.hutool.json.JSONUtil;
 import cn.liulingfengyu.actuator.bo.TaskInfoBo;
 import cn.liulingfengyu.actuator.enums.IncidentEnum;
+import cn.liulingfengyu.actuator.property.ActuatorProperty;
+import cn.liulingfengyu.actuator.scheduledExecutor.entity.ActuatorInfo;
 import cn.liulingfengyu.actuator.scheduledExecutor.entity.TaskInfo;
 import cn.liulingfengyu.actuator.scheduledExecutor.service.BaseScheduledExecutorService;
-import cn.liulingfengyu.redis.bo.RedisMessageBo;
-import cn.liulingfengyu.redis.publish.ConstantConfiguration;
+import cn.liulingfengyu.rabbitmq.bind.ActuatorBind;
+import cn.liulingfengyu.redis.constant.RedisConstant;
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.util.*;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
@@ -30,20 +32,21 @@ public class FailoverRunnable implements Runnable {
 
     private BaseScheduledExecutorService base;
 
-    @Value("${actuator.name}")
-    private String actuatorName;
+    private ActuatorProperty actuatorProperty;
 
     public FailoverRunnable() {
     }
 
-    public FailoverRunnable(BaseScheduledExecutorService base) {
+    public FailoverRunnable(BaseScheduledExecutorService base,
+                            ActuatorProperty actuatorProperty) {
         this.base = base;
+        this.actuatorProperty = actuatorProperty;
     }
 
     @Override
     public void run() {
         //获取执行器列表
-        Set<String> appNames = base.redisUtil.hKeys(actuatorName).stream().map(Object::toString).collect(Collectors.toSet());
+        Map<String, ActuatorInfo> actuatorInfoMap = base.actuatorInfoService.list().stream().collect(Collectors.toMap(ActuatorInfo::getActuatorName, Function.identity()));
         //需要转移的任务集合
         List<TaskInfo> taskInfoList = new ArrayList<>();
         //宕机的执行器列表
@@ -51,11 +54,11 @@ public class FailoverRunnable implements Runnable {
         //正常的执行器列表
         Set<String> normalAppName = new HashSet<>();
         //循环执行器列表
-        for (String appName : appNames) {
+        for (String appName : actuatorInfoMap.keySet()) {
             //验证执行器心跳
-            if (Boolean.FALSE.equals(base.redisUtil.hasKey(actuatorName.concat("-").concat("heartbeat:").concat(appName)))) {
+            if (Boolean.FALSE.equals(base.redisUtil.hasKey(RedisConstant.ACTUATOR_HEARTBEAT.concat(appName)))) {
                 //添加到需要转移的任务集合中
-                taskInfoList.addAll(JSONUtil.toList(base.redisUtil.hValues(appName).toString(), TaskInfo.class).stream().filter(taskInfo -> !taskInfo.isCancelled() && !taskInfo.isDone()).collect(Collectors.toList()));
+                taskInfoList.addAll(base.taskInfoService.getRestartList(appName));
                 //添加到宕机的执行器列表
                 downAppName.add(appName);
             } else {
@@ -74,19 +77,18 @@ public class FailoverRunnable implements Runnable {
                 BeanUtils.copyProperties(taskInfo, taskInfoBo);
                 taskInfoBo.setAppName(appName);
                 taskInfoBo.setIncident(IncidentEnum.START.getCode());
-                RedisMessageBo redisMessageBo = new RedisMessageBo();
-                redisMessageBo.setUuid(UUID.randomUUID().toString().replace("-", ""));
-                redisMessageBo.setMessage(JSONUtil.toJsonStr(taskInfoBo));
-                base.stringRedisTemplate.convertAndSend(ConstantConfiguration.SCHEDULED_EXECUTOR, JSONUtil.toJsonStr(redisMessageBo));
+                base.rabbitTemplate.convertAndSend(ActuatorBind.ACTUATOR_EXCHANGE_NAME, ActuatorBind.ACTUATOR_ROUTING_KEY, taskInfoBo);
             }
         }
         if (!downAppName.isEmpty()) {
-            for (String appName : appNames) {
-                //删除宕机的执行器任务集合
-                base.redisUtil.hDelete(appName, taskInfoList.stream().map(TaskInfo::getId).toArray());
-                //删除宕机的执行器
-                base.redisUtil.hDelete(actuatorName, appName);
-            }
+            //删除宕机的执行器任务集合
+            QueryWrapper<TaskInfo> taskInfoQueryWrapper = new QueryWrapper<>();
+            taskInfoQueryWrapper.in(TaskInfo.APP_NAME, downAppName);
+            base.taskInfoService.remove(taskInfoQueryWrapper);
+            //删除宕机的执行器
+            QueryWrapper<ActuatorInfo> actuatorInfoQueryWrapper = new QueryWrapper<>();
+            actuatorInfoQueryWrapper.in(TaskInfo.APP_NAME, downAppName);
+            base.actuatorInfoService.remove(actuatorInfoQueryWrapper);
             log.info("执行器->{}宕机，任务已经转移到了->{}执行器", String.join(",", downAppName), String.join(",", normalAppName));
         }
     }

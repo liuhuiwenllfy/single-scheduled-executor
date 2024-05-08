@@ -1,28 +1,27 @@
 package cn.liulingfengyu.actuator.scheduledExecutor.service;
 
-import cn.hutool.json.JSONUtil;
 import cn.liulingfengyu.actuator.bo.CallbackBo;
 import cn.liulingfengyu.actuator.bo.TaskInfoBo;
 import cn.liulingfengyu.actuator.enums.IncidentEnum;
+import cn.liulingfengyu.actuator.property.ActuatorProperty;
 import cn.liulingfengyu.actuator.scheduledExecutor.entity.TaskInfo;
 import cn.liulingfengyu.actuator.scheduledExecutor.service.runnable.BaseRunnable;
 import cn.liulingfengyu.actuator.scheduledExecutor.service.runnable.FailoverRunnable;
 import cn.liulingfengyu.actuator.scheduledExecutor.service.runnable.HeartbeatRunnable;
-import cn.liulingfengyu.actuator.utils.CronUtils;
+import cn.liulingfengyu.rabbitmq.bind.ActuatorBind;
 import cn.liulingfengyu.redis.utils.RedisUtil;
+import cn.liulingfengyu.tools.CronUtils;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.BeanUtils;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.data.redis.core.StringRedisTemplate;
-import org.springframework.http.*;
 import org.springframework.stereotype.Component;
-import org.springframework.web.client.RestTemplate;
 
-import java.util.*;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
 
 import static java.util.concurrent.Executors.newScheduledThreadPool;
 
@@ -41,11 +40,6 @@ public class BaseScheduledExecutorService {
     public final RedisUtil redisUtil;
 
     /**
-     * redis
-     */
-    public final StringRedisTemplate stringRedisTemplate;
-
-    /**
      * 任务服务
      */
     public final ITaskInfoService taskInfoService;
@@ -61,99 +55,78 @@ public class BaseScheduledExecutorService {
      * 计划执行程序服务
      */
     private final ScheduledExecutorService executor;
+
+    private final ActuatorProperty actuatorProperty;
+
+    public final RabbitTemplate rabbitTemplate;
+
     /**
      * 当前执行器执行中的任务，key->任务id，value->计划对象
      */
     private final Map<String, ScheduledFuture<?>> map = new HashMap<>();
-    @Value("${app.heartbeat.interval}")
-    public int appHeartbeatInterval;
-    @Value("${app.name}")
-    public String appName;
-    @Value("${persistence}")
-    public boolean persistence;
-    @Value("${business.name}")
-    public String businessName;
-    @Value("${actuator.name}")
-    public String actuatorName;
-    @Value("${app.address}")
-    public String appAddress;
-    @Value("${scheduled.corePoolSize}")
-    private int corePoolSize;
-    @Value("${scheduled.callback}")
-    private String callback;
 
     public BaseScheduledExecutorService(RedisUtil redisUtil,
-                                        StringRedisTemplate stringRedisTemplate,
                                         ITaskInfoService taskInfoService,
                                         ISchedulingLogService schedulingLogService,
-                                        IActuatorInfoService actuatorInfoService) {
+                                        IActuatorInfoService actuatorInfoService,
+                                        ActuatorProperty actuatorProperty,
+                                        RabbitTemplate rabbitTemplate) {
         //核心线程数
-        executor = newScheduledThreadPool(corePoolSize);
+        executor = newScheduledThreadPool(actuatorProperty.getCorePoolSize());
         this.redisUtil = redisUtil;
-        this.stringRedisTemplate = stringRedisTemplate;
         this.taskInfoService = taskInfoService;
         this.schedulingLogService = schedulingLogService;
         this.actuatorInfoService = actuatorInfoService;
-    }
-
-    public static TaskInfoBo getTaskInfoBo(TaskInfo taskInfo) {
-        TaskInfoBo taskInfoBo = new TaskInfoBo();
-        BeanUtils.copyProperties(taskInfo, taskInfoBo);
-        return taskInfoBo;
+        this.actuatorProperty = actuatorProperty;
+        this.rabbitTemplate = rabbitTemplate;
     }
 
     /**
      * 心跳检测任务
      */
     public void heartbeatDetection() {
-        Runnable command = new HeartbeatRunnable(this);
-        executor.scheduleWithFixedDelay(command, 0, appHeartbeatInterval, TimeUnit.MILLISECONDS);
+        executor.scheduleWithFixedDelay(
+                new HeartbeatRunnable(this, actuatorProperty),
+                20000,
+                actuatorProperty.getHeartbeatInterval(),
+                TimeUnit.MILLISECONDS);
     }
 
     /**
      * 故障转移
      */
     public void failover() {
-        Runnable command = new FailoverRunnable(this);
-        executor.scheduleAtFixedRate(command, 0, appHeartbeatInterval, TimeUnit.MILLISECONDS);
+        executor.scheduleAtFixedRate(
+                new FailoverRunnable(this, actuatorProperty),
+                30000,
+                actuatorProperty.getHeartbeatInterval(),
+                TimeUnit.MILLISECONDS);
     }
 
     /**
      * 任务重启
+     *
+     * @param checkingTaskStatus 是否检查任务当前状态
      */
     public void restart(boolean checkingTaskStatus) {
-        //获取缓存池中当前机器所有任务
-        List<String> idList = new ArrayList<>();
-        //获取需要启动的任务
-        List<TaskInfo> taskInfoList = JSONUtil.toList(redisUtil.hValues(appName).toString(), TaskInfo.class).stream().filter(taskInfo -> {
-            if (!taskInfo.isCancelled()) {
-                idList.add(taskInfo.getId());
-                return true;
-            } else {
-                return false;
-            }
-        }).collect(Collectors.toList());
-        List<TaskInfo> persistenceTaskInfoList = new ArrayList<>();
-        if (persistence) {
-            persistenceTaskInfoList = taskInfoService.getRestartListExcludeAppointTask(idList);
-        }
-        taskInfoList.addAll(persistenceTaskInfoList);
-        for (TaskInfo taskInfo : taskInfoList) {
+        //获取当前执行器需要重启的任务
+        List<TaskInfo> taskInfos = taskInfoService.getRestartList(actuatorProperty.getName());
+        for (TaskInfo taskInfo : taskInfos) {
             if (checkingTaskStatus) {
-                if (checkingTaskStatus(taskInfo.getId())) {
+                if (!map.containsKey(taskInfo.getId())) {
                     startOnce(taskInfo, null);
                 }
             } else {
                 startOnce(taskInfo, null);
             }
-
         }
     }
 
     /**
      * 启动单次任务
      *
-     * @param taskInfo 任务入参
+     * @param taskInfo     任务入参
+     * @param incidentEnum 事件类型
      */
     public void startOnce(TaskInfo taskInfo, String incidentEnum) {
         //延迟时间
@@ -161,27 +134,25 @@ public class BaseScheduledExecutorService {
         if (initialDelay != -1) {
             //保存任务信息
             taskInfo.setNextExecutionTime(System.currentTimeMillis() + initialDelay);
-            taskInfo.setAppName(appName);
+            taskInfo.setAppName(actuatorProperty.getName());
             taskInfo.setCancelled(false);
-            redisUtil.hPut(appName, taskInfo.getId(), JSONUtil.toJsonStr(taskInfo));
-            //持久化
-            if (persistence) {
-                taskInfoService.saveItem(taskInfo);
-            }
-            //执行任务
-            if (!taskInfo.isCancelled()) {
-                Runnable command = new BaseRunnable(this, taskInfo.getId());
-                if (!map.containsKey(taskInfo.getId()) || map.get(taskInfo.getId()).isCancelled() || map.get(taskInfo.getId()).isDone()) {
-                    ScheduledFuture<?> scheduledFuture = executor.schedule(command, initialDelay, TimeUnit.MILLISECONDS);
-                    map.put(taskInfo.getId(), scheduledFuture);
+            if (taskInfoService.saveOrUpdate(taskInfo)) {
+                //执行任务
+                ScheduledFuture<?> scheduledFuture = executor.schedule(
+                        new BaseRunnable(this, taskInfo.getId(),
+                                actuatorProperty),
+                        initialDelay,
+                        TimeUnit.MILLISECONDS);
+                map.put(taskInfo.getId(), scheduledFuture);
+                if (IncidentEnum.START.getCode().equals(incidentEnum)) {
+                    sendMessage(IncidentEnum.START.getCode(), taskInfo, "启动成功");
+                } else if (IncidentEnum.UPDATE.getCode().equals(incidentEnum)) {
+                    sendMessage(IncidentEnum.UPDATE.getCode(), taskInfo, "修改成功");
                 }
-            }
-            if (IncidentEnum.START.getCode().equals(incidentEnum)) {
-                sendMessage(IncidentEnum.START.getCode(), getTaskInfoBo(taskInfo), "启动成功");
             }
         } else {
             log.error("任务->{}执行失败，cron时间格式错误->{}", taskInfo.getId(), taskInfo.getCron());
-            sendMessage(IncidentEnum.ERROR.getCode(), getTaskInfoBo(taskInfo), "任务执行失败，cron时间格式错误");
+            sendMessage(IncidentEnum.ERROR.getCode(), taskInfo, "任务执行失败，cron时间格式错误");
         }
 
     }
@@ -189,157 +160,76 @@ public class BaseScheduledExecutorService {
     /**
      * 停止任务
      *
-     * @param taskId     任务id
+     * @param taskInfo   任务id
      * @param forcedStop 是否强制停止
      */
-    public void stop(String taskId, boolean forcedStop) {
-        TaskInfo taskInfo = new TaskInfo();
+    public void stop(TaskInfo taskInfo, boolean forcedStop) {
         try {
-            //停止定时器中任务
-            if (map.containsKey(taskId)) {
-                ScheduledFuture<?> scheduledFuture = map.get(taskId);
-                scheduledFuture.cancel(forcedStop);
-            }
-            //更新redis中任务状态
-            taskInfo = JSONUtil.toBean(redisUtil.hGet(appName, taskId).toString(), TaskInfo.class);
-            if (taskInfo != null) {
-                taskInfo.setCancelled(true);
-                redisUtil.hPut(appName, taskId, JSONUtil.toJsonStr(taskInfo));
-            }
-            //更新数据库中任务状态
-            if (persistence) {
-                if (taskInfo == null) {
-                    taskInfo = taskInfoService.getById(taskId);
-                    taskInfo.setCancelled(true);
+            //更新数据库状态
+            taskInfo.setCancelled(true);
+            if (taskInfoService.updateById(taskInfo)) {
+                //停止定时器中任务
+                if (map.containsKey(taskInfo.getId())) {
+                    ScheduledFuture<?> scheduledFuture = map.get(taskInfo.getId());
+                    scheduledFuture.cancel(forcedStop);
                 }
-                taskInfoService.saveItem(taskInfo);
-            }
-            //发布停止任务消息
-            if (taskInfo != null) {
-                sendMessage(IncidentEnum.STOP.getCode(), getTaskInfoBo(taskInfo), "停止成功");
+                //发布停止任务消息
+                sendMessage(IncidentEnum.STOP.getCode(), taskInfo, "停止成功");
             }
         } catch (Exception e) {
-            log.error("任务->{}停止失败，错误信息->{}", taskId, e.getMessage());
-            sendMessage(IncidentEnum.ERROR.getCode(), getTaskInfoBo(taskInfo), "停止失败");
+            log.error("任务->{}停止失败，错误信息->{}", taskInfo.getId(), e.getMessage());
+            sendMessage(IncidentEnum.ERROR.getCode(), taskInfo, "停止失败");
         }
     }
 
     /**
      * 删除任务
      *
-     * @param taskId     任务id
+     * @param taskInfo   任务信息
      * @param forcedStop 是否强制停止
      */
-    public void remove(String taskId, boolean forcedStop) {
-        TaskInfo taskInfo = new TaskInfo();
+    public void remove(TaskInfo taskInfo, boolean forcedStop) {
         try {
-            //删除定时器中任务
-            if (map.containsKey(taskId)) {
-                ScheduledFuture<?> scheduledFuture = map.get(taskId);
-                scheduledFuture.cancel(forcedStop);
-                map.remove(taskId);
-            }
-            //删除redis中任务
-            taskInfo = JSONUtil.toBean(redisUtil.hGet(appName, taskId).toString(), TaskInfo.class);
-            if (taskInfo != null) {
-                redisUtil.hDelete(appName, taskId);
-            }
-            //删除数据库中任务
-            if (persistence) {
-                taskInfoService.deleteItem(taskId);
-            }
-            //发布删除任务消息
-            if (taskInfo != null) {
-                sendMessage(IncidentEnum.REMOVE.getCode(), getTaskInfoBo(taskInfo), "删除成功");
+            if (taskInfoService.removeById(taskInfo.getId())) {
+                //删除定时器中任务
+                if (map.containsKey(taskInfo.getId())) {
+                    ScheduledFuture<?> scheduledFuture = map.get(taskInfo.getId());
+                    scheduledFuture.cancel(forcedStop);
+                    map.remove(taskInfo.getId());
+                }
+                //发布删除任务消息
+                sendMessage(IncidentEnum.REMOVE.getCode(), taskInfo, "删除成功");
             }
         } catch (Exception e) {
-            log.error("任务->{}删除失败，错误信息->{}", taskId, e.getMessage());
-            sendMessage(IncidentEnum.ERROR.getCode(), getTaskInfoBo(taskInfo), "删除失败");
+            log.error("任务->{}删除失败，错误信息->{}", taskInfo.getId(), e.getMessage());
+            sendMessage(IncidentEnum.ERROR.getCode(), taskInfo, "删除失败");
         }
     }
 
     /**
      * 修改
      *
-     * @param newTaskInfo 任务信息
+     * @param taskInfo 任务信息
      */
-    public void update(TaskInfo newTaskInfo) {
+    public void update(TaskInfo taskInfo) {
         try {
-            //修改redis中任务
-            TaskInfo taskInfo = JSONUtil.toBean(redisUtil.hGet(appName, newTaskInfo.getId()).toString(), TaskInfo.class);
-            if (taskInfo != null) {
-                taskInfo.setCode(newTaskInfo.getCode());
-                taskInfo.setTitle(newTaskInfo.getTitle());
-                taskInfo.setCron(newTaskInfo.getCron());
-                taskInfo.setTaskParam(newTaskInfo.getTaskParam());
-                redisUtil.hPut(appName, newTaskInfo.getId(), JSONUtil.toJsonStr(taskInfo));
-            }
-            //更新数据库中任务
-            if (persistence) {
-                if (taskInfo == null) {
-                    taskInfo = taskInfoService.getById(newTaskInfo.getId());
-                    taskInfo.setCode(newTaskInfo.getCode());
-                    taskInfo.setTitle(newTaskInfo.getTitle());
-                    taskInfo.setCron(newTaskInfo.getCron());
-                    taskInfo.setTaskParam(newTaskInfo.getTaskParam());
-                }
-                taskInfoService.saveItem(taskInfo);
-            }
-            sendMessage(IncidentEnum.UPDATE.getCode(), getTaskInfoBo(newTaskInfo), "修改成功");
+            ScheduledFuture<?> scheduledFuture = map.get(taskInfo.getId());
+            scheduledFuture.cancel(false);
+            map.remove(taskInfo.getId());
+            startOnce(taskInfo, IncidentEnum.UPDATE.getCode());
         } catch (Exception e) {
-            log.error("任务->{}修改失败，错误信息->{}", newTaskInfo.getId(), e.getMessage());
-            sendMessage(IncidentEnum.UPDATE.getCode(), getTaskInfoBo(newTaskInfo), "修改失败");
+            log.error("任务->{}修改失败，错误信息->{}", taskInfo.getId(), e.getMessage());
+            sendMessage(IncidentEnum.UPDATE.getCode(), taskInfo, "修改失败");
         }
     }
 
-    public void sendMessage(String incident, TaskInfoBo taskInfoBo, String errorMsg) {
-        RestTemplate restTemplate = new RestTemplate();
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_JSON);
+    public void sendMessage(String incident, TaskInfo taskInfo, String errorMsg) {
+        TaskInfoBo taskInfoBo = new TaskInfoBo();
+        BeanUtils.copyProperties(taskInfo, taskInfoBo);
         CallbackBo callbackBo = new CallbackBo();
         callbackBo.setIncident(incident);
         callbackBo.setTaskInfoBo(taskInfoBo);
         callbackBo.setErrorMsg(errorMsg);
-        HttpEntity<String> entity = new HttpEntity<>(JSONUtil.toJsonStr(callbackBo), headers);
-        send(restTemplate, entity);
-    }
-
-    private void send(RestTemplate restTemplate, HttpEntity<String> entity) {
-        Set<String> businessNameSet = redisUtil.hKeys(businessName).stream().map(Object::toString).collect(Collectors.toSet());
-        if (!businessNameSet.isEmpty()) {
-            Random random = new Random();
-            String businessNameItem = businessNameSet.toArray(new String[0])[random.nextInt(businessNameSet.size())];
-            String address = redisUtil.hGet(businessName, businessNameItem).toString();
-            ResponseEntity<String> exchange;
-            try {
-                exchange = restTemplate.exchange(address.concat(callback), HttpMethod.POST, entity, String.class);
-                if (!"success".equals(exchange.getBody())) {
-                    redisUtil.hDelete(businessName, businessNameItem);
-                    log.error("业务系统节点->{}响应失败，消息已转发下一节点", businessNameItem);
-                    send(restTemplate, entity);
-                }
-            } catch (Exception e) {
-                redisUtil.hDelete(businessName, businessNameItem);
-                log.error("业务系统节点->{}响应失败，消息已转发下一节点", businessNameItem);
-                send(restTemplate, entity);
-            }
-
-        }
-    }
-
-    public boolean checkingTaskStatus(String id) {
-        //检查任务是否在执行中
-        Set<String> appNames = redisUtil.hKeys(actuatorName).stream().map(Object::toString).collect(Collectors.toSet());
-        boolean flag = false;
-        for (String item : appNames) {
-            if (redisUtil.hExists(item, id)) {
-                TaskInfo ordTaskInfo = JSONUtil.toBean(redisUtil.hGet(item, id).toString(), TaskInfo.class);
-                if (!ordTaskInfo.isCancelled()) {
-                    flag = true;
-                    break;
-                }
-            }
-        }
-        return !flag;
+        rabbitTemplate.convertAndSend(ActuatorBind.ACTUATOR_CALLBACK_EXCHANGE_NAME, ActuatorBind.ACTUATOR_CALLBACK_ROUTING_KEY, callbackBo);
     }
 }

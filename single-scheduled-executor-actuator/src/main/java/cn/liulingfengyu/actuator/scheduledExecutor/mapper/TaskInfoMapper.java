@@ -3,6 +3,7 @@ package cn.liulingfengyu.actuator.scheduledExecutor.mapper;
 import cn.liulingfengyu.actuator.scheduledExecutor.entity.TaskInfo;
 import com.baomidou.dynamic.datasource.annotation.DS;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
+import org.apache.ibatis.annotations.Param;
 
 import java.util.List;
 
@@ -18,11 +19,11 @@ import java.util.List;
 public interface TaskInfoMapper extends BaseMapper<TaskInfo> {
 
     /**
-     * 获取任务并排除指定的任务
+     * 获取指定执行器需要重启的任务
      *
-     * @param idList 排除的任务
+     * @param actuatorName 执行器名称
      * @return {@link List}
      */
-    List<TaskInfo> getRestartListExcludeAppointTask(List<String> idList);
+    List<TaskInfo> getRestartList(@Param("actuatorName") String actuatorName);
 
 }

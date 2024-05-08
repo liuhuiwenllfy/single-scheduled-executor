@@ -1,11 +1,14 @@
 package cn.liulingfengyu.scheduledTask.controller;
 
-import cn.liulingfengyu.actuator.utils.RespJson;
 import cn.liulingfengyu.mybatisplus.entity.PageInfo;
 import cn.liulingfengyu.scheduledTask.dto.SchedulingLogDto;
 import cn.liulingfengyu.scheduledTask.service.ISchedulingLogService;
 import cn.liulingfengyu.scheduledTask.vo.SchedulingLogVo;
+import cn.liulingfengyu.tools.exception.RespJson;
 import com.baomidou.mybatisplus.core.metadata.IPage;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import org.springdoc.api.annotations.ParameterObject;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -21,6 +24,7 @@ import org.springframework.web.bind.annotation.RestController;
  */
 @RestController
 @RequestMapping("/scheduledExecutor/schedulingLog")
+@Tag(name = "调度日志管理")
 public class SchedulingLogController {
 
     @Autowired
@@ -33,7 +37,8 @@ public class SchedulingLogController {
      * @return {@link RespJson}
      */
     @GetMapping("getByPage")
-    public RespJson<IPage<SchedulingLogVo>> getByPage(PageInfo pageInfo, SchedulingLogDto schedulingLogDto) {
+    @Operation(summary = "条件分页查询日志")
+    public RespJson<IPage<SchedulingLogVo>> getByPage(@ParameterObject PageInfo pageInfo, @ParameterObject SchedulingLogDto schedulingLogDto) {
         return RespJson.success(schedulingLogService.getByPage(pageInfo, schedulingLogDto));
     }
 }

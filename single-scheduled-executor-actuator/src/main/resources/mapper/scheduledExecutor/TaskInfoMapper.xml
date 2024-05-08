@@ -14,11 +14,24 @@
         <result column="tenant_id" property="tenantId"/>
     </resultMap>
 
-    <select id="getRestartListExcludeAppointTask"
+    <select id="getRestartList"
             resultType="cn.liulingfengyu.actuator.scheduledExecutor.entity.TaskInfo">
-        select *
+        select
+        id,
+        code,
+        title,
+        app_name,
+        initial_delay,
+        task_param,
+        cancelled,
+        done,
+        next_execution_time,
+        create_time,
+        tenant_id,
+        cron
         from s_task_info
         where cancelled = false
+        and app_name = #{actuatorName}
     </select>
 
 </mapper>

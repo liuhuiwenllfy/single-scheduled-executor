@@ -21,11 +21,4 @@ public interface ISchedulingLogService extends IService<SchedulingLog> {
      */
     String insertItem(TaskInfo taskInfo);
 
-    /**
-     * 修改日志
-     *
-     * @param id       日志id
-     * @param taskInfo 入参
-     */
-    void updateItem(String id, TaskInfo taskInfo);
 }

@@ -1,7 +1,6 @@
 package cn.liulingfengyu.actuator.initialize;
 
 import cn.liulingfengyu.actuator.scheduledExecutor.service.ScheduledExecutorInitService;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
 
@@ -13,8 +12,11 @@ import org.springframework.stereotype.Component;
 @Component
 public class ActuatorCommandLineRunner implements CommandLineRunner {
 
-    @Autowired
-    private ScheduledExecutorInitService scheduledExecutorInitService;
+    private final ScheduledExecutorInitService scheduledExecutorInitService;
+
+    public ActuatorCommandLineRunner(ScheduledExecutorInitService scheduledExecutorInitService) {
+        this.scheduledExecutorInitService = scheduledExecutorInitService;
+    }
 
     @Override
     public void run(String... args) {

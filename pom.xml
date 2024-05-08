@@ -10,7 +10,7 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>2.5.0</version>
+        <version>2.7.5</version>
         <relativePath/> <!-- lookup parent from repository -->
     </parent>
     <!--项目组ID，定义当前 Maven 项目隶属的组织或公司，通常是唯一的。它的取值一般是项目所属公司或组织的网址或 URL 的反写-->
@@ -21,14 +21,16 @@
     <version>1.0.0</version>
     <!--聚合模块-->
     <modules>
-        <module>single-model</module>
         <module>single-common</module>
+        <module>single-model</module>
         <module>single-scheduled-executor-actuator</module>
         <module>single-scheduled-executor-admin</module>
     </modules>
     <!--配置-->
     <properties>
         <mybatis-plus-boot-starter.version>3.5.3.1</mybatis-plus-boot-starter.version>
+        <mybatis-plus-generator.version>3.5.3.1</mybatis-plus-generator.version>
+        <knife4j-openapi3-spring-boot-starter.version>4.4.0</knife4j-openapi3-spring-boot-starter.version>
         <druid-spring-boot-starter.version>1.2.15</druid-spring-boot-starter.version>
         <dynamic-datasource-spring-boot-starter.version>3.6.1</dynamic-datasource-spring-boot-starter.version>
         <single-common-bom.version>1.0.0</single-common-bom.version>
@@ -55,6 +57,16 @@
                 <version>${dynamic-datasource-spring-boot-starter.version}</version>
             </dependency>
             <dependency>
+                <groupId>com.baomidou</groupId>
+                <artifactId>mybatis-plus-generator</artifactId>
+                <version>${mybatis-plus-generator.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>cn.hutool</groupId>
+                <artifactId>hutool-all</artifactId>
+                <version>${cn.hutool-all.version}</version>
+            </dependency>
+            <dependency>
                 <groupId>cn.liulingfengyu</groupId>
                 <artifactId>single-common-bom</artifactId>
                 <version>${single-common-bom.version}</version>
@@ -69,9 +81,9 @@
                 <scope>import</scope>
             </dependency>
             <dependency>
-                <groupId>cn.hutool</groupId>
-                <artifactId>hutool-all</artifactId>
-                <version>${cn.hutool-all.version}</version>
+                <groupId>com.github.xiaoymin</groupId>
+                <artifactId>knife4j-openapi3-spring-boot-starter</artifactId>
+                <version>${knife4j-openapi3-spring-boot-starter.version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>

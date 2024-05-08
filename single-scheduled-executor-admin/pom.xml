@@ -14,9 +14,15 @@
     <description>single-scheduled-executor-admin</description>
 
     <dependencies>
+        <!--mybatis-plus-->
         <dependency>
             <groupId>cn.liulingfengyu</groupId>
             <artifactId>single-common-mybatis-plus</artifactId>
+        </dependency>
+        <!--执行器模型-->
+        <dependency>
+            <groupId>cn.liulingfengyu</groupId>
+            <artifactId>single-model-actuator</artifactId>
         </dependency>
         <dependency>
             <groupId>cn.liulingfengyu</groupId>
@@ -24,7 +30,7 @@
         </dependency>
         <dependency>
             <groupId>cn.liulingfengyu</groupId>
-            <artifactId>single-model-actuator</artifactId>
+            <artifactId>single-common-rabbitmq</artifactId>
         </dependency>
     </dependencies>
 

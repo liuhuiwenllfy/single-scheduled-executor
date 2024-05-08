@@ -16,26 +16,12 @@ import java.util.List;
 public interface ITaskInfoService extends IService<TaskInfo> {
 
     /**
-     * 新增任务
+     * 获取指定执行器需要重启的任务
      *
-     * @param taskInfo 入参
-     */
-    void saveItem(TaskInfo taskInfo);
-
-    /**
-     * 修改任务
-     *
-     * @param id 入参
-     */
-    void deleteItem(String id);
-
-    /**
-     * 获取任务并排除指定的任务
-     *
-     * @param idList 排除的任务
+     * @param actuatorName 执行器名称
      * @return {@link List}
      */
-    List<TaskInfo> getRestartListExcludeAppointTask(List<String> idList);
+    List<TaskInfo> getRestartList(String actuatorName);
 
 
 }

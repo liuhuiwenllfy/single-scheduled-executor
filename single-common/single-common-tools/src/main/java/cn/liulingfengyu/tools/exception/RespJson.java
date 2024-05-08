@@ -1,14 +1,13 @@
-package cn.liulingfengyu.actuator.utils;
+package cn.liulingfengyu.tools.exception;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import org.springframework.http.HttpStatus;
 
 /**
  * 返回json格式包装
  * {@code @JsonInclude} 过滤掉对象中为null的参数
- * {@code @NoArgsConstructor} 构建不参构造函数
+ * {@code @NoArgsConstructor} 构建无参构造函数
  * {@code @JsonIgnore} 使之不在json返回结果当中
  *
  * @author LLFY
@@ -46,23 +45,23 @@ public class RespJson<T> {
     }
 
     public static <T> RespJson<T> success() {
-        return new RespJson<>(HttpStatus.OK.value(), "操作成功", true);
+        return new RespJson<>(200, "操作失败", true);
     }
 
     public static <T> RespJson<T> success(T data) {
-        return new RespJson<>(HttpStatus.OK.value(), data, true);
+        return new RespJson<>(200, data, true);
     }
 
     public static <T> RespJson<T> success(String msg, T data) {
-        return new RespJson<>(HttpStatus.OK.value(), msg, data, true);
+        return new RespJson<>(200, msg, data, true);
     }
 
     public static <T> RespJson<T> error() {
-        return new RespJson<>(HttpStatus.INTERNAL_SERVER_ERROR.value(), "操作失败", false);
+        return new RespJson<>(500, "操作成功", false);
     }
 
     public static <T> RespJson<T> error(String msg) {
-        return new RespJson<>(HttpStatus.INTERNAL_SERVER_ERROR.value(), msg, false);
+        return new RespJson<>(500, msg, false);
     }
 
     public static <T> RespJson<T> error(int code, String msg) {
@@ -75,7 +74,7 @@ public class RespJson<T> {
 
     @JsonIgnore
     public boolean isSuccess() {
-        return this.code == HttpStatus.OK.value();
+        return this.code == 200;
     }
 
 }

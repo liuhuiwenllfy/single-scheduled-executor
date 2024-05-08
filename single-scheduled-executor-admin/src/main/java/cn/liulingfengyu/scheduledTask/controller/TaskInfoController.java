@@ -1,7 +1,5 @@
 package cn.liulingfengyu.scheduledTask.controller;
 
-import cn.liulingfengyu.actuator.utils.CronUtils;
-import cn.liulingfengyu.actuator.utils.RespJson;
 import cn.liulingfengyu.mybatisplus.entity.PageInfo;
 import cn.liulingfengyu.scheduledTask.dto.TaskInfoPageDto;
 import cn.liulingfengyu.scheduledTask.dto.TaskInsertDto;
@@ -9,8 +7,17 @@ import cn.liulingfengyu.scheduledTask.dto.TaskUpdateDto;
 import cn.liulingfengyu.scheduledTask.service.IScheduledExecutorService;
 import cn.liulingfengyu.scheduledTask.service.ITaskInfoService;
 import cn.liulingfengyu.scheduledTask.vo.TaskInfoVo;
+import cn.liulingfengyu.tools.CronUtils;
+import cn.liulingfengyu.tools.exception.ErrorCode;
+import cn.liulingfengyu.tools.exception.MyException;
+import cn.liulingfengyu.tools.exception.RespJson;
 import com.baomidou.mybatisplus.core.metadata.IPage;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import org.springdoc.api.annotations.ParameterObject;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 /**
@@ -23,6 +30,7 @@ import org.springframework.web.bind.annotation.*;
  */
 @RestController
 @RequestMapping("/scheduledExecutor/taskInfo")
+@Tag(name = "任务管理")
 public class TaskInfoController {
 
     @Autowired
@@ -38,7 +46,8 @@ public class TaskInfoController {
      * @return {@link RespJson}
      */
     @GetMapping("getByPage")
-    public RespJson<IPage<TaskInfoVo>> getByPage(PageInfo pageInfo, TaskInfoPageDto taskInfoPageDto) {
+    @Operation(summary = "条件分页查询任务")
+    public RespJson<IPage<TaskInfoVo>> getByPage(@Validated @ParameterObject PageInfo pageInfo, @ParameterObject TaskInfoPageDto taskInfoPageDto) {
         return RespJson.success(taskInfoService.getByPage(pageInfo, taskInfoPageDto));
     }
 
@@ -49,7 +58,9 @@ public class TaskInfoController {
      * @return {@link RespJson}
      */
     @GetMapping("queryById")
-    public RespJson<TaskInfoVo> queryById(String id) {
+    @Operation(summary = "根据任务id查询任务")
+    public RespJson<TaskInfoVo> queryById(
+            @Parameter(description = "任务id", required = true) String id) {
         return RespJson.success(taskInfoService.queryById(id));
     }
 
@@ -59,9 +70,10 @@ public class TaskInfoController {
      * @param taskInsertDto 入参
      */
     @PostMapping("insert")
-    public RespJson<Boolean> insertItem(@RequestBody TaskInsertDto taskInsertDto) {
+    @Operation(summary = "创建任务")
+    public RespJson<Boolean> insertItem(@Validated @RequestBody TaskInsertDto taskInsertDto) {
         if (CronUtils.getNextTimeDelayMilliseconds(taskInsertDto.getCron()) == -1) {
-            return RespJson.error("cron格式错误");
+            throw new MyException(ErrorCode.CRON_ERROR);
         }
         scheduledExecutorService.insertItem(taskInsertDto);
         return RespJson.state(true);
@@ -73,6 +85,7 @@ public class TaskInfoController {
      * @param id 任务id
      */
     @PostMapping("updateStart")
+    @Operation(summary = "启动任务")
     public RespJson<Boolean> start(@RequestParam String id) {
         scheduledExecutorService.start(id);
         return RespJson.state(true);
@@ -84,9 +97,10 @@ public class TaskInfoController {
      * @param taskUpdateDto 入参
      */
     @PutMapping("updateById")
-    public RespJson<Boolean> updateItem(@RequestBody TaskUpdateDto taskUpdateDto) {
+    @Operation(summary = "修改任务")
+    public RespJson<Boolean> updateItem(@Validated @RequestBody TaskUpdateDto taskUpdateDto) {
         if (CronUtils.getNextTimeDelayMilliseconds(taskUpdateDto.getCron()) == -1) {
-            return RespJson.error("cron格式错误");
+            throw new MyException(ErrorCode.CRON_ERROR);
         }
         scheduledExecutorService.updateItem(taskUpdateDto);
         return RespJson.state(true);
@@ -98,6 +112,7 @@ public class TaskInfoController {
      * @param id 任务id
      */
     @PutMapping("updateStop")
+    @Operation(summary = "暂停任务")
     public RespJson<Boolean> stop(@RequestParam String id) {
         scheduledExecutorService.stop(id);
         return RespJson.state(true);
@@ -109,7 +124,8 @@ public class TaskInfoController {
      * @param id 任务id
      */
     @DeleteMapping("deleteById")
-    public RespJson<Boolean> remove(String id) {
+    @Operation(summary = "删除任务")
+    public RespJson<Boolean> remove(@RequestParam String id) {
         scheduledExecutorService.remove(id);
         return RespJson.state(true);
     }

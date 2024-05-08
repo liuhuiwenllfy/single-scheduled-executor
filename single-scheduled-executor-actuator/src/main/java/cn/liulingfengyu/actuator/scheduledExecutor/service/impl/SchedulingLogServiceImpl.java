@@ -34,12 +34,4 @@ public class SchedulingLogServiceImpl extends ServiceImpl<SchedulingLogMapper, S
         this.save(schedulingLog);
         return schedulingLog.getId();
     }
-
-    @Override
-    public void updateItem(String id, TaskInfo taskInfo) {
-        SchedulingLog schedulingLog = new SchedulingLog();
-        schedulingLog.setId(id);
-        schedulingLog.setDone(taskInfo.isDone());
-        this.updateById(schedulingLog);
-    }
 }

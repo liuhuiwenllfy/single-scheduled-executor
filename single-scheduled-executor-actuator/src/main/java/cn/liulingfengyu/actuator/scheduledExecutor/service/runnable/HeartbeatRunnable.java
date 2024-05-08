@@ -1,6 +1,8 @@
 package cn.liulingfengyu.actuator.scheduledExecutor.service.runnable;
 
+import cn.liulingfengyu.actuator.property.ActuatorProperty;
 import cn.liulingfengyu.actuator.scheduledExecutor.service.BaseScheduledExecutorService;
+import cn.liulingfengyu.redis.constant.RedisConstant;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
@@ -21,24 +23,20 @@ public class HeartbeatRunnable implements Runnable {
 
     private BaseScheduledExecutorService base;
 
-    public HeartbeatRunnable() {
-    }
+    private ActuatorProperty actuatorProperty;
 
-    public HeartbeatRunnable(BaseScheduledExecutorService base) {
+    public HeartbeatRunnable(BaseScheduledExecutorService base,
+                             ActuatorProperty actuatorProperty) {
         this.base = base;
+        this.actuatorProperty = actuatorProperty;
     }
 
     @Override
     public void run() {
-        //注册执行器节点
-        base.redisUtil.hPut(base.actuatorName, base.appName, base.appAddress);
-        base.redisUtil.setEx(base.actuatorName.concat("-").concat("heartbeat:").concat(base.appName), base.appAddress, base.appHeartbeatInterval + 2000, TimeUnit.MILLISECONDS);
-        //持久化
-        if (base.persistence) {
-            base.actuatorInfoService.saveItem(base.appName, base.appAddress);
-        }
+        base.redisUtil.setEx(RedisConstant.ACTUATOR_HEARTBEAT.concat(actuatorProperty.getName()), actuatorProperty.getName(), actuatorProperty.getHeartbeatInterval() + 2000, TimeUnit.MILLISECONDS);
+        base.actuatorInfoService.saveItem(actuatorProperty.getName(), actuatorProperty.getIp());
         //任务恢复
         base.restart(true);
-        log.info("执行器{}心跳正常", base.appName);
+        log.info("执行器{}心跳正常", actuatorProperty.getName());
     }
 }

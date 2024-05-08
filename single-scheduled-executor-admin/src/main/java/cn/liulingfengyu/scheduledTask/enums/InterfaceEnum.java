@@ -12,7 +12,8 @@ import lombok.Getter;
 @AllArgsConstructor
 public enum InterfaceEnum {
 
-    DELETE_THIRTY_DAYS_AGO_ACTUATOR_LOGS("deleteThirtyDaysAgoActuatorLogs", "删除三十天前的执行器日志");
+    DELETE_THIRTY_DAYS_AGO_ACTUATOR_LOGS("deleteThirtyDaysAgoActuatorLogs", "删除30天前的执行器日志"),
+    ;
 
     private final String code;
 

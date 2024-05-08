@@ -1,6 +1,5 @@
 package cn.liulingfengyu.scheduledTask.service.impl;
 
-import cn.hutool.core.util.StrUtil;
 import cn.liulingfengyu.mybatisplus.entity.PageInfo;
 import cn.liulingfengyu.mybatisplus.utils.PageUtils;
 import cn.liulingfengyu.scheduledTask.dto.TaskInfoPageDto;
@@ -12,6 +11,7 @@ import com.baomidou.dynamic.datasource.annotation.DS;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
 
 import java.text.SimpleDateFormat;
@@ -34,9 +34,10 @@ public class TaskInfoServiceImpl extends ServiceImpl<TaskInfoMapper, TaskInfo> i
     @Override
     public IPage<TaskInfoVo> getByPage(PageInfo pageInfo, TaskInfoPageDto taskInfoPageDto) {
         Page<TaskInfoVo> page = new PageUtils<TaskInfoVo>().getPage(pageInfo);
-        List<TaskInfoVo> list = baseMapper.getByPage(page, taskInfoPageDto);
+        List<TaskInfoVo> list =
+                baseMapper.getByPage(page, taskInfoPageDto);
         list.forEach(item -> {
-            if (StrUtil.isNotBlank(item.getNextExecutionTime())) {
+            if (StringUtils.isNotBlank(item.getNextExecutionTime())) {
                 // 将时间戳转换为Instant对象
                 Instant instant = Instant.ofEpochMilli(Long.parseLong(item.getNextExecutionTime()));
                 // 将Instant对象转换为Date对象

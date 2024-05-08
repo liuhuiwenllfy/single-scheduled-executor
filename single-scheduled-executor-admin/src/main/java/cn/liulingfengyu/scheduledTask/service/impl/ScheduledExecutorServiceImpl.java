@@ -1,26 +1,29 @@
 package cn.liulingfengyu.scheduledTask.service.impl;
 
-import cn.hutool.json.JSONUtil;
+import cn.hutool.core.lang.UUID;
 import cn.liulingfengyu.actuator.bo.TaskInfoBo;
 import cn.liulingfengyu.actuator.enums.IncidentEnum;
-import cn.liulingfengyu.redis.bo.RedisMessageBo;
-import cn.liulingfengyu.redis.publish.ConstantConfiguration;
+import cn.liulingfengyu.rabbitmq.bind.ActuatorBind;
+import cn.liulingfengyu.redis.constant.RedisConstant;
 import cn.liulingfengyu.redis.utils.RedisUtil;
 import cn.liulingfengyu.scheduledTask.dto.TaskInsertDto;
 import cn.liulingfengyu.scheduledTask.dto.TaskUpdateDto;
+import cn.liulingfengyu.scheduledTask.entity.ActuatorInfo;
 import cn.liulingfengyu.scheduledTask.entity.TaskInfo;
 import cn.liulingfengyu.scheduledTask.mapper.TaskInfoMapper;
+import cn.liulingfengyu.scheduledTask.service.IActuatorInfoService;
 import cn.liulingfengyu.scheduledTask.service.IScheduledExecutorService;
+import cn.liulingfengyu.tools.exception.MyException;
 import com.baomidou.dynamic.datasource.annotation.DS;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
+import java.util.Map;
 import java.util.Random;
 import java.util.Set;
-import java.util.UUID;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
@@ -33,26 +36,26 @@ import java.util.stream.Collectors;
 public class ScheduledExecutorServiceImpl implements IScheduledExecutorService {
 
     @Autowired
-    private StringRedisTemplate stringRedisTemplate;
-
-    @Autowired
     private RedisUtil redisUtil;
 
     @Autowired
     private TaskInfoMapper taskInfoMapper;
 
-    @Value("${actuator.name}")
-    private String actuatorName;
+    @Autowired
+    private IActuatorInfoService actuatorInfoService;
+
+    @Autowired
+    private RabbitTemplate rabbitTemplate;
 
     @Override
     public void insertItem(TaskInsertDto taskInsertDto) {
         TaskInfoBo taskInfoBo = new TaskInfoBo();
         BeanUtils.copyProperties(taskInsertDto, taskInfoBo);
-        taskInfoBo.setId(UUID.randomUUID().toString().replace("-", ""));
+        taskInfoBo.setId(UUID.randomUUID().toString(true));
         taskInfoBo.setCancelled(true);
         taskInfoBo.setAppName(getAppName());
         taskInfoBo.setIncident(IncidentEnum.START.getCode());
-        publish(taskInfoBo);
+        rabbitTemplate.convertAndSend(ActuatorBind.ACTUATOR_EXCHANGE_NAME, ActuatorBind.ACTUATOR_ROUTING_KEY, taskInfoBo);
     }
 
     @Override
@@ -64,7 +67,7 @@ public class ScheduledExecutorServiceImpl implements IScheduledExecutorService {
         taskInfoBo.setIncident(IncidentEnum.START.getCode());
         taskInfoBo.setCancelled(false);
         taskInfoBo.setDone(false);
-        publish(taskInfoBo);
+        rabbitTemplate.convertAndSend(ActuatorBind.ACTUATOR_EXCHANGE_NAME, ActuatorBind.ACTUATOR_ROUTING_KEY, taskInfoBo);
     }
 
     @Override
@@ -74,7 +77,7 @@ public class ScheduledExecutorServiceImpl implements IScheduledExecutorService {
         BeanUtils.copyProperties(taskUpdateDto, taskInfoBo);
         taskInfoBo.setAppName(taskInfo.getAppName());
         taskInfoBo.setIncident(IncidentEnum.UPDATE.getCode());
-        publish(taskInfoBo);
+        rabbitTemplate.convertAndSend(ActuatorBind.ACTUATOR_EXCHANGE_NAME, ActuatorBind.ACTUATOR_ROUTING_KEY, taskInfoBo);
     }
 
     @Override
@@ -82,9 +85,10 @@ public class ScheduledExecutorServiceImpl implements IScheduledExecutorService {
         TaskInfo taskInfo = taskInfoMapper.selectById(taskId);
         TaskInfoBo taskInfoBo = new TaskInfoBo();
         taskInfoBo.setId(taskId);
+        taskInfoBo.setTitle(taskInfo.getTitle());
         taskInfoBo.setAppName(taskInfo.getAppName());
         taskInfoBo.setIncident(IncidentEnum.STOP.getCode());
-        publish(taskInfoBo);
+        rabbitTemplate.convertAndSend(ActuatorBind.ACTUATOR_EXCHANGE_NAME, ActuatorBind.ACTUATOR_ROUTING_KEY, taskInfoBo);
     }
 
     @Override
@@ -92,23 +96,25 @@ public class ScheduledExecutorServiceImpl implements IScheduledExecutorService {
         TaskInfo taskInfo = taskInfoMapper.selectById(taskId);
         TaskInfoBo taskInfoBo = new TaskInfoBo();
         taskInfoBo.setId(taskId);
+        taskInfoBo.setTitle(taskInfo.getTitle());
         taskInfoBo.setAppName(taskInfo.getAppName());
         taskInfoBo.setIncident(IncidentEnum.REMOVE.getCode());
-        publish(taskInfoBo);
+        rabbitTemplate.convertAndSend(ActuatorBind.ACTUATOR_EXCHANGE_NAME, ActuatorBind.ACTUATOR_ROUTING_KEY, taskInfoBo);
     }
 
     private String getAppName() {
         //随机获取执行器
-        Set<String> appNames = redisUtil.hKeys(actuatorName).stream().map(Object::toString).collect(Collectors.toSet());
+        Map<String, ActuatorInfo> actuatorInfoMap = actuatorInfoService.list().stream().collect(Collectors.toMap(ActuatorInfo::getActuatorName, Function.identity()));
         Random random = new Random();
-        return appNames.toArray(new String[0])[random.nextInt(appNames.size())];
-    }
-
-    private void publish(TaskInfoBo taskInfoBo) {
-        //redis发布消息体
-        RedisMessageBo redisMessageBo = new RedisMessageBo();
-        redisMessageBo.setUuid(UUID.randomUUID().toString().replace("-", ""));
-        redisMessageBo.setMessage(JSONUtil.toJsonStr(taskInfoBo));
-        stringRedisTemplate.convertAndSend(ConstantConfiguration.SCHEDULED_EXECUTOR, JSONUtil.toJsonStr(redisMessageBo));
+        Set<String> appNames = actuatorInfoMap.keySet();
+        String appName = null;
+        do {
+            appNames.remove(appName);
+            if (appNames.isEmpty()) {
+                throw new MyException("没有可用的执行器");
+            }
+            appName = appNames.toArray(new String[0])[random.nextInt(appNames.size())];
+        } while (!redisUtil.hasKey(RedisConstant.ACTUATOR_HEARTBEAT.concat(appName)));
+        return appName;
     }
 }
