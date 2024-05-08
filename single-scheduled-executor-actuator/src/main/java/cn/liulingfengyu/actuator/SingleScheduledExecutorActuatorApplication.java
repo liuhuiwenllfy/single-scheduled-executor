@@ -4,6 +4,7 @@ import org.mybatis.spring.annotation.MapperScan;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.ComponentScan;
+import org.springframework.scheduling.annotation.EnableScheduling;
 
 /**
  * 启动类
@@ -12,7 +13,8 @@ import org.springframework.context.annotation.ComponentScan;
  */
 @SpringBootApplication
 @ComponentScan(basePackages = "cn.liulingfengyu")
-@MapperScan("cn.liulingfengyu.actuator.*.mapper")
+@MapperScan("cn.liulingfengyu.actuator.mapper")
+@EnableScheduling
 public class SingleScheduledExecutorActuatorApplication {
     public static void main(String[] args) {
         System.setProperty("druid.mysql.usePingMethod", "false");

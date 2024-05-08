@@ -1,8 +1,6 @@
-package cn.liulingfengyu.actuator.scheduledExecutor.entity;
+package cn.liulingfengyu.actuator.entity;
 
-import com.baomidou.mybatisplus.annotation.IdType;
-import com.baomidou.mybatisplus.annotation.TableId;
-import com.baomidou.mybatisplus.annotation.TableName;
+import com.baomidou.mybatisplus.annotation.*;
 import com.baomidou.mybatisplus.extension.activerecord.Model;
 import lombok.Getter;
 import lombok.Setter;
@@ -13,7 +11,7 @@ import java.util.Date;
 
 /**
  * <p>
- * 调度日志表
+ * 任务基表
  * </p>
  *
  * @author LLFY
@@ -22,51 +20,65 @@ import java.util.Date;
 @Getter
 @Setter
 @Accessors(chain = true)
-@TableName("s_scheduling_log")
-public class SchedulingLog extends Model<SchedulingLog> {
+@TableName("s_task_info")
+public class TaskInfo extends Model<TaskInfo> {
 
     public static final String ID = "id";
-    public static final String TASK_ID = "task_id";
+    public static final String CODE = "code";
+    public static final String TITLE = "title";
     public static final String APP_NAME = "app_name";
     public static final String TASK_PARAM = "task_param";
-    public static final String COMPLETE_STATE = "complete_state";
-    public static final String RESPONSE_RESULT = "response_result";
+    public static final String CANCELLED = "cancelled";
+    public static final String DONE = "done";
+    public static final String NEXT_EXECUTION_TIME = "next_execution_time";
     public static final String CREATE_TIME = "create_time";
     public static final String TENANT_ID = "tenant_id";
+    public static final String CRON = "cron";
     private static final long serialVersionUID = 1L;
-    /**
-     * 主键
-     */
     @TableId(value = "id", type = IdType.ASSIGN_UUID)
     private String id;
     /**
-     * 任务id
+     * 标题
      */
-    private String taskId;
+    private String title;
+    /**
+     * 代码
+     */
+    private String code;
     /**
      * 执行器名称
      */
     private String appName;
     /**
-     * 携带参数
+     * 任务携带参数
      */
     private String taskParam;
     /**
-     * 完成状态
+     * 是否已取消
+     */
+    private boolean cancelled;
+    /**
+     * 是否已完成
      */
     private boolean done;
     /**
-     * 响应结果
+     * 下一次执行时间
      */
-    private String responseResult;
+    private long nextExecutionTime;
     /**
      * 创建时间
      */
+    @TableField(fill = FieldFill.INSERT)
     private Date createTime;
     /**
      * 租户号
      */
     private String tenantId;
+
+    /**
+     * cron
+     */
+    private String cron;
 
     @Override
     public Serializable pkVal() {

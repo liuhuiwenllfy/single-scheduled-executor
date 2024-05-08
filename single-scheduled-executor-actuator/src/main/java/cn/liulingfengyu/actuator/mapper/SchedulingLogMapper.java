@@ -1,6 +1,6 @@
-package cn.liulingfengyu.actuator.scheduledExecutor.mapper;
+package cn.liulingfengyu.actuator.mapper;
 
-import cn.liulingfengyu.actuator.scheduledExecutor.entity.SchedulingLog;
+import cn.liulingfengyu.actuator.entity.SchedulingLog;
 import com.baomidou.dynamic.datasource.annotation.DS;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 

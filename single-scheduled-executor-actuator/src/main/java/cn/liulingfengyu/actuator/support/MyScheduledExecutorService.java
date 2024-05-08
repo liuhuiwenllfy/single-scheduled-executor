@@ -1,29 +1,30 @@
-package cn.liulingfengyu.actuator.scheduledExecutor.service;
+package cn.liulingfengyu.actuator.support;
 
+import cn.hutool.json.JSONUtil;
 import cn.liulingfengyu.actuator.bo.CallbackBo;
 import cn.liulingfengyu.actuator.bo.TaskInfoBo;
 import cn.liulingfengyu.actuator.enums.IncidentEnum;
-import cn.liulingfengyu.actuator.property.ActuatorProperty;
-import cn.liulingfengyu.actuator.scheduledExecutor.entity.TaskInfo;
-import cn.liulingfengyu.actuator.scheduledExecutor.service.runnable.BaseRunnable;
-import cn.liulingfengyu.actuator.scheduledExecutor.service.runnable.FailoverRunnable;
-import cn.liulingfengyu.actuator.scheduledExecutor.service.runnable.HeartbeatRunnable;
+import cn.liulingfengyu.actuator.entity.SchedulingLog;
+import cn.liulingfengyu.actuator.entity.TaskInfo;
+import cn.liulingfengyu.actuator.service.ISchedulingLogService;
+import cn.liulingfengyu.actuator.service.ITaskInfoService;
 import cn.liulingfengyu.rabbitmq.bind.ActuatorBind;
+import cn.liulingfengyu.redis.constant.RedisConstant;
 import cn.liulingfengyu.redis.utils.RedisUtil;
 import cn.liulingfengyu.tools.CronUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.BeanUtils;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
-
-import static java.util.concurrent.Executors.newScheduledThreadPool;
+import java.util.stream.Collectors;
 
 /**
  * 调度执行器服务
@@ -32,91 +33,47 @@ import static java.util.concurrent.Executors.newScheduledThreadPool;
  */
 @Component
 @Slf4j
-public class BaseScheduledExecutorService {
+public class MyScheduledExecutorService {
 
-    /**
-     * redis
-     */
-    public final RedisUtil redisUtil;
+    @Autowired
+    private ITaskInfoService taskInfoService;
 
-    /**
-     * 任务服务
-     */
-    public final ITaskInfoService taskInfoService;
-    /**
-     * 日志服务
-     */
-    public final ISchedulingLogService schedulingLogService;
-    /**
-     * 执行器服务
-     */
-    public final IActuatorInfoService actuatorInfoService;
-    /**
-     * 计划执行程序服务
-     */
-    private final ScheduledExecutorService executor;
+    @Autowired
+    private ISchedulingLogService schedulingLogService;
 
-    private final ActuatorProperty actuatorProperty;
+    @Value("${actuator.name}")
+    private String actuatorName;
 
-    public final RabbitTemplate rabbitTemplate;
+    @Autowired
+    public RabbitTemplate rabbitTemplate;
+
+    @Autowired
+    private RedisUtil redisUtil;
 
     /**
      * 当前执行器执行中的任务，key->任务id，value->计划对象
      */
     private final Map<String, ScheduledFuture<?>> map = new HashMap<>();
 
-    public BaseScheduledExecutorService(RedisUtil redisUtil,
-                                        ITaskInfoService taskInfoService,
-                                        ISchedulingLogService schedulingLogService,
-                                        IActuatorInfoService actuatorInfoService,
-                                        ActuatorProperty actuatorProperty,
-                                        RabbitTemplate rabbitTemplate) {
+    /**
+     * 计划执行程序服务
+     */
+    private final ScheduledExecutorService executor;
+
+    public MyScheduledExecutorService(@Value("${actuator.core-pool-size}") int corePoolSize) {
         //核心线程数
-        executor = newScheduledThreadPool(actuatorProperty.getCorePoolSize());
-        this.redisUtil = redisUtil;
-        this.taskInfoService = taskInfoService;
-        this.schedulingLogService = schedulingLogService;
-        this.actuatorInfoService = actuatorInfoService;
-        this.actuatorProperty = actuatorProperty;
-        this.rabbitTemplate = rabbitTemplate;
-    }
-
-    /**
-     * 心跳检测任务
-     */
-    public void heartbeatDetection() {
-        executor.scheduleWithFixedDelay(
-                new HeartbeatRunnable(this, actuatorProperty),
-                20000,
-                actuatorProperty.getHeartbeatInterval(),
-                TimeUnit.MILLISECONDS);
-    }
-
-    /**
-     * 故障转移
-     */
-    public void failover() {
-        executor.scheduleAtFixedRate(
-                new FailoverRunnable(this, actuatorProperty),
-                30000,
-                actuatorProperty.getHeartbeatInterval(),
-                TimeUnit.MILLISECONDS);
+        executor = new ScheduledThreadPoolExecutor(corePoolSize <= 0 ? 2 : corePoolSize);
     }
 
     /**
      * 任务重启
      *
-     * @param checkingTaskStatus 是否检查任务当前状态
      */
-    public void restart(boolean checkingTaskStatus) {
+    public void restart() {
         //获取当前执行器需要重启的任务
-        List<TaskInfo> taskInfos = taskInfoService.getRestartList(actuatorProperty.getName());
+        List<TaskInfo> taskInfos = taskInfoService.getRestartList(actuatorName);
         for (TaskInfo taskInfo : taskInfos) {
-            if (checkingTaskStatus) {
-                if (!map.containsKey(taskInfo.getId())) {
-                    startOnce(taskInfo, null);
-                }
-            } else {
+            if (!map.containsKey(taskInfo.getId())) {
                 startOnce(taskInfo, null);
             }
         }
@@ -134,13 +91,51 @@ public class BaseScheduledExecutorService {
         if (initialDelay != -1) {
             //保存任务信息
             taskInfo.setNextExecutionTime(System.currentTimeMillis() + initialDelay);
-            taskInfo.setAppName(actuatorProperty.getName());
+            taskInfo.setAppName(actuatorName);
             taskInfo.setCancelled(false);
             if (taskInfoService.saveOrUpdate(taskInfo)) {
                 //执行任务
                 ScheduledFuture<?> scheduledFuture = executor.schedule(
-                        new BaseRunnable(this, taskInfo.getId(),
-                                actuatorProperty),
+                        () -> {
+                            //任务信息
+                            TaskInfo taskInfo1 = taskInfoService.getById(taskInfo.getId());
+                            //日志id
+                            String schedulingLogId = null;
+                            if (taskInfo1 != null) {
+                                //验证时间是否过期
+                                if (CronUtils.isExpired(taskInfo1.getCron())) {
+                                    //任务已过期或完成
+                                    taskInfo1.setDone(true);
+                                    taskInfo1.setCancelled(true);
+                                } else {
+                                    //获取下一执行时间
+                                    long nextTimeDelayMilliseconds = CronUtils.getNextTimeDelayMilliseconds(taskInfo1.getCron());
+                                    if (nextTimeDelayMilliseconds != -1) {
+                                        //再次启动任务
+                                        TaskInfoBo taskInfoBo = new TaskInfoBo();
+                                        BeanUtils.copyProperties(taskInfo1, taskInfoBo);
+                                        taskInfoBo.setAppName(taskInfo1.getAppName());
+                                        taskInfoBo.setIncident(IncidentEnum.UPDATE.getCode());
+                                        rabbitTemplate.convertAndSend(ActuatorBind.ACTUATOR_EXCHANGE_NAME, ActuatorBind.ACTUATOR_ROUTING_KEY, taskInfoBo);
+                                    } else {
+                                        //任务已过期或完成
+                                        taskInfo1.setCancelled(true);
+                                    }
+                                    //保存执行日志
+                                    schedulingLogId = schedulingLogService.insertItem(taskInfo1);
+                                    //推送执行消息
+                                    log.info("执行任务id->{}", taskInfo1.getId());
+                                    sendMessage(IncidentEnum.CARRY_OUT.getCode(), taskInfo1, "执行成功");
+                                }
+                                //更新任务
+                                taskInfoService.updateById(taskInfo1);
+                                //完成任务更新日志
+                                SchedulingLog schedulingLog = new SchedulingLog();
+                                schedulingLog.setId(schedulingLogId);
+                                schedulingLog.setDone(true);
+                                schedulingLogService.updateById(schedulingLog);
+                            }
+                        },
                         initialDelay,
                         TimeUnit.MILLISECONDS);
                 map.put(taskInfo.getId(), scheduledFuture);
@@ -223,13 +218,17 @@ public class BaseScheduledExecutorService {
         }
     }
 
-    public void sendMessage(String incident, TaskInfo taskInfo, String errorMsg) {
+    private void sendMessage(String incident, TaskInfo taskInfo, String errorMsg) {
         TaskInfoBo taskInfoBo = new TaskInfoBo();
         BeanUtils.copyProperties(taskInfo, taskInfoBo);
         CallbackBo callbackBo = new CallbackBo();
         callbackBo.setIncident(incident);
         callbackBo.setTaskInfoBo(taskInfoBo);
         callbackBo.setErrorMsg(errorMsg);
+        //获取调度器列表
+        Set<String> adminInfoList = JSONUtil.toList(JSONUtil.toJsonStr(redisUtil.hGetAll(RedisConstant.ADMIN_REGISTRY)), String.class).stream().filter(s -> redisUtil.hasKey(RedisConstant.ADMIN_HEARTBEAT.concat(s))).collect(Collectors.toSet());
+        Random random = new Random();
+        callbackBo.setSchedulerName(adminInfoList.toArray()[random.nextInt(adminInfoList.size())].toString());
         rabbitTemplate.convertAndSend(ActuatorBind.ACTUATOR_CALLBACK_EXCHANGE_NAME, ActuatorBind.ACTUATOR_CALLBACK_ROUTING_KEY, callbackBo);
     }
 }

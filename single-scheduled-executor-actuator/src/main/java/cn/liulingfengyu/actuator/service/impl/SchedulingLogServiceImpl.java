@@ -1,9 +1,9 @@
-package cn.liulingfengyu.actuator.scheduledExecutor.service.impl;
+package cn.liulingfengyu.actuator.service.impl;
 
-import cn.liulingfengyu.actuator.scheduledExecutor.entity.SchedulingLog;
-import cn.liulingfengyu.actuator.scheduledExecutor.entity.TaskInfo;
-import cn.liulingfengyu.actuator.scheduledExecutor.mapper.SchedulingLogMapper;
-import cn.liulingfengyu.actuator.scheduledExecutor.service.ISchedulingLogService;
+import cn.liulingfengyu.actuator.entity.SchedulingLog;
+import cn.liulingfengyu.actuator.entity.TaskInfo;
+import cn.liulingfengyu.actuator.mapper.SchedulingLogMapper;
+import cn.liulingfengyu.actuator.service.ISchedulingLogService;
 import com.baomidou.dynamic.datasource.annotation.DS;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import org.springframework.stereotype.Service;

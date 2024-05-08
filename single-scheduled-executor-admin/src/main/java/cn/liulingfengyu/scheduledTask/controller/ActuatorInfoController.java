@@ -1,11 +1,9 @@
 package cn.liulingfengyu.scheduledTask.controller;
 
-import cn.liulingfengyu.mybatisplus.entity.PageInfo;
 import cn.liulingfengyu.scheduledTask.dto.ActuatorInfoDto;
 import cn.liulingfengyu.scheduledTask.service.IActuatorInfoService;
 import cn.liulingfengyu.scheduledTask.vo.ActuatorInfoVo;
 import cn.liulingfengyu.tools.exception.RespJson;
-import com.baomidou.mybatisplus.core.metadata.IPage;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -33,15 +31,15 @@ public class ActuatorInfoController {
     private IActuatorInfoService actuatorInfoService;
 
     /**
-     * 条件分页查询执行器
+     * 条件查询执行器
      *
-     * @param pageInfo 分页参数
+     * @param actuatorInfoDto 查询条件
      * @return {@link RespJson}
      */
-    @GetMapping("getByPage")
-    @Operation(summary = "条件分页查询执行器")
-    public RespJson<IPage<ActuatorInfoVo>> getByPage(@Validated @ParameterObject PageInfo pageInfo, @ParameterObject ActuatorInfoDto actuatorInfoDto) {
-        return RespJson.success(actuatorInfoService.getByPage(pageInfo, actuatorInfoDto));
+    @GetMapping("getList")
+    @Operation(summary = "条件查询执行器")
+    public RespJson<List<ActuatorInfoVo>> getList(@Validated @ParameterObject ActuatorInfoDto actuatorInfoDto) {
+        return RespJson.success(actuatorInfoService.getList(actuatorInfoDto));
     }
 
     /**

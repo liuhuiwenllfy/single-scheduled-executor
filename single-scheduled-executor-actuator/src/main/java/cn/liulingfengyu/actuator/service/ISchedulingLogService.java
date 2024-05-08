@@ -1,7 +1,7 @@
-package cn.liulingfengyu.actuator.scheduledExecutor.service;
+package cn.liulingfengyu.actuator.service;
 
-import cn.liulingfengyu.actuator.scheduledExecutor.entity.SchedulingLog;
-import cn.liulingfengyu.actuator.scheduledExecutor.entity.TaskInfo;
+import cn.liulingfengyu.actuator.entity.SchedulingLog;
+import cn.liulingfengyu.actuator.entity.TaskInfo;
 import com.baomidou.mybatisplus.extension.service.IService;
 
 /**

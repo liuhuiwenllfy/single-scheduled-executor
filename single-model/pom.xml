@@ -13,6 +13,7 @@
     <description>single-model</description>
 
     <modules>
+        <module>single-model-bom</module>
         <module>single-model-actuator</module>
     </modules>
 </project>

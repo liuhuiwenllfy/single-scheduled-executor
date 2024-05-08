@@ -45,9 +45,7 @@ spring:
           multiplier: 2
 actuator:
   name: actuator-1 #执行器名称
-  ip: 127.0.0.1
-  corePoolSize: 2 #调度器线程池核心线程数
-  heartbeat-interval: 5000 #心跳检测时间间隔
+  core-pool-size: 2 #调度器线程池核心线程数
 logging:
   level:
     cn.liulingfengyu.actuator: debug

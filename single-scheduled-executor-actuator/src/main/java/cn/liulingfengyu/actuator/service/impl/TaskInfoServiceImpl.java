@@ -1,8 +1,8 @@
-package cn.liulingfengyu.actuator.scheduledExecutor.service.impl;
+package cn.liulingfengyu.actuator.service.impl;
 
-import cn.liulingfengyu.actuator.scheduledExecutor.entity.TaskInfo;
-import cn.liulingfengyu.actuator.scheduledExecutor.mapper.TaskInfoMapper;
-import cn.liulingfengyu.actuator.scheduledExecutor.service.ITaskInfoService;
+import cn.liulingfengyu.actuator.entity.TaskInfo;
+import cn.liulingfengyu.actuator.mapper.TaskInfoMapper;
+import cn.liulingfengyu.actuator.service.ITaskInfoService;
 import com.baomidou.dynamic.datasource.annotation.DS;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import org.springframework.stereotype.Service;

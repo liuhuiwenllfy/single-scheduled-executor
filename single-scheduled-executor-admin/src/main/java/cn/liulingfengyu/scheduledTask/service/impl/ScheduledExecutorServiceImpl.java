@@ -1,6 +1,7 @@
 package cn.liulingfengyu.scheduledTask.service.impl;
 
 import cn.hutool.core.lang.UUID;
+import cn.hutool.json.JSONUtil;
 import cn.liulingfengyu.actuator.bo.TaskInfoBo;
 import cn.liulingfengyu.actuator.enums.IncidentEnum;
 import cn.liulingfengyu.rabbitmq.bind.ActuatorBind;
@@ -8,22 +9,18 @@ import cn.liulingfengyu.redis.constant.RedisConstant;
 import cn.liulingfengyu.redis.utils.RedisUtil;
 import cn.liulingfengyu.scheduledTask.dto.TaskInsertDto;
 import cn.liulingfengyu.scheduledTask.dto.TaskUpdateDto;
-import cn.liulingfengyu.scheduledTask.entity.ActuatorInfo;
 import cn.liulingfengyu.scheduledTask.entity.TaskInfo;
 import cn.liulingfengyu.scheduledTask.mapper.TaskInfoMapper;
 import cn.liulingfengyu.scheduledTask.service.IActuatorInfoService;
 import cn.liulingfengyu.scheduledTask.service.IScheduledExecutorService;
-import cn.liulingfengyu.tools.exception.MyException;
 import com.baomidou.dynamic.datasource.annotation.DS;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import java.util.Map;
 import java.util.Random;
 import java.util.Set;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
@@ -40,9 +37,6 @@ public class ScheduledExecutorServiceImpl implements IScheduledExecutorService {
 
     @Autowired
     private TaskInfoMapper taskInfoMapper;
-
-    @Autowired
-    private IActuatorInfoService actuatorInfoService;
 
     @Autowired
     private RabbitTemplate rabbitTemplate;
@@ -104,17 +98,8 @@ public class ScheduledExecutorServiceImpl implements IScheduledExecutorService {
 
     private String getAppName() {
         //随机获取执行器
-        Map<String, ActuatorInfo> actuatorInfoMap = actuatorInfoService.list().stream().collect(Collectors.toMap(ActuatorInfo::getActuatorName, Function.identity()));
+        Set<String> appNames = JSONUtil.toList(JSONUtil.toJsonStr(redisUtil.hGetAll(RedisConstant.ACTUATOR_REGISTRY)), String.class).stream().filter(s -> redisUtil.hasKey(RedisConstant.ACTUATOR_HEARTBEAT.concat(s))).collect(Collectors.toSet());
         Random random = new Random();
-        Set<String> appNames = actuatorInfoMap.keySet();
-        String appName = null;
-        do {
-            appNames.remove(appName);
-            if (appNames.isEmpty()) {
-                throw new MyException("没有可用的执行器");
-            }
-            appName = appNames.toArray(new String[0])[random.nextInt(appNames.size())];
-        } while (!redisUtil.hasKey(RedisConstant.ACTUATOR_HEARTBEAT.concat(appName)));
-        return appName;
+        return appNames.toArray()[random.nextInt(appNames.size())].toString();
     }
 }

@@ -21,4 +21,9 @@ public class CallbackBo {
      * 错误信息
      */
     private String errorMsg;
+
+    /**
+     * 调度中心名称
+     */
+    private String schedulerName;
 }
