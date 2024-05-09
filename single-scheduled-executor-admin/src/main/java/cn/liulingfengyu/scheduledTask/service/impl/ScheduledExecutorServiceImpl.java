@@ -42,7 +42,7 @@ public class ScheduledExecutorServiceImpl implements IScheduledExecutorService {
         taskInfoBo.setCancelled(true);
         taskInfoBo.setAppName(electUtils.actuatorElectUtils());
         taskInfoBo.setIncident(IncidentEnum.START.getCode());
-        rabbitTemplate.convertAndSend(ActuatorBind.ACTUATOR_EXCHANGE_NAME, ActuatorBind.ACTUATOR_ROUTING_KEY, taskInfoBo);
+        rabbitTemplate.convertAndSend(ActuatorBind.ACTUATOR_EXCHANGE_NAME, "", taskInfoBo);
     }
 
     @Override
@@ -54,7 +54,7 @@ public class ScheduledExecutorServiceImpl implements IScheduledExecutorService {
         taskInfoBo.setIncident(IncidentEnum.START.getCode());
         taskInfoBo.setCancelled(false);
         taskInfoBo.setDone(false);
-        rabbitTemplate.convertAndSend(ActuatorBind.ACTUATOR_EXCHANGE_NAME, ActuatorBind.ACTUATOR_ROUTING_KEY, taskInfoBo);
+        rabbitTemplate.convertAndSend(ActuatorBind.ACTUATOR_EXCHANGE_NAME, "", taskInfoBo);
     }
 
     @Override
@@ -64,7 +64,7 @@ public class ScheduledExecutorServiceImpl implements IScheduledExecutorService {
         BeanUtils.copyProperties(taskUpdateDto, taskInfoBo);
         taskInfoBo.setAppName(taskInfo.getAppName());
         taskInfoBo.setIncident(IncidentEnum.UPDATE.getCode());
-        rabbitTemplate.convertAndSend(ActuatorBind.ACTUATOR_EXCHANGE_NAME, ActuatorBind.ACTUATOR_ROUTING_KEY, taskInfoBo);
+        rabbitTemplate.convertAndSend(ActuatorBind.ACTUATOR_EXCHANGE_NAME, "", taskInfoBo);
     }
 
     @Override
@@ -75,7 +75,7 @@ public class ScheduledExecutorServiceImpl implements IScheduledExecutorService {
         taskInfoBo.setTitle(taskInfo.getTitle());
         taskInfoBo.setAppName(taskInfo.getAppName());
         taskInfoBo.setIncident(IncidentEnum.STOP.getCode());
-        rabbitTemplate.convertAndSend(ActuatorBind.ACTUATOR_EXCHANGE_NAME, ActuatorBind.ACTUATOR_ROUTING_KEY, taskInfoBo);
+        rabbitTemplate.convertAndSend(ActuatorBind.ACTUATOR_EXCHANGE_NAME, "", taskInfoBo);
     }
 
     @Override
@@ -86,6 +86,6 @@ public class ScheduledExecutorServiceImpl implements IScheduledExecutorService {
         taskInfoBo.setTitle(taskInfo.getTitle());
         taskInfoBo.setAppName(taskInfo.getAppName());
         taskInfoBo.setIncident(IncidentEnum.REMOVE.getCode());
-        rabbitTemplate.convertAndSend(ActuatorBind.ACTUATOR_EXCHANGE_NAME, ActuatorBind.ACTUATOR_ROUTING_KEY, taskInfoBo);
+        rabbitTemplate.convertAndSend(ActuatorBind.ACTUATOR_EXCHANGE_NAME, "", taskInfoBo);
     }
 }

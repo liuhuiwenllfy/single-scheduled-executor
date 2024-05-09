@@ -61,44 +61,29 @@ public class ScheduledTasks {
         //注册
         redisUtil.hPut(RedisConstant.ACTUATOR_REGISTRY, actuatorName, actuatorName);
         //清理注册表
+        Set<String> downAppName = new HashSet<>();
         redisUtil.hGetAll(RedisConstant.ACTUATOR_REGISTRY).values().forEach(s -> {
             if (!redisUtil.hasKey(RedisConstant.ACTUATOR_HEARTBEAT.concat((String) s))) {
-                //删除注册表
-                redisUtil.hDelete(RedisConstant.ACTUATOR_REGISTRY, s);
+                downAppName.add((String) s);
             }
         });
+        //故障转移
+        if (!downAppName.isEmpty() && !redisUtil.hasKey(RedisConstant.FAILOVER_IN)){
+            redisUtil.set(RedisConstant.FAILOVER_IN, actuatorName);
+            failover(downAppName);
+        }
         log.info("执行器{}心跳正常", actuatorName);
     }
-
     /**
-     * 每五秒执行一次，任务恢复
+     * 故障转移
      */
-    @Scheduled(fixedDelay = 5000)
-    public void taskRecovery() {
-        //任务恢复
-        myScheduledExecutorService.restart();
-    }
-
-    /**
-     * 每10秒执行一次，完成故障转移
-     */
-    @Scheduled(fixedDelay = 10000)
-    public void failover() {
-        //获取执行器列表
-        List<String> actuatorCollect = JSONUtil.toList(JSONUtil.toJsonStr(redisUtil.hGetAll(RedisConstant.ACTUATOR_REGISTRY).values()), String.class);
+    private void failover(Set<String> downAppName) {
         //需要转移的任务集合
         List<TaskInfo> taskInfoList = new ArrayList<>();
-        //宕机的执行器列表
-        Set<String> downAppName = new HashSet<>();
         //循环执行器列表
-        for (String name : actuatorCollect) {
-            //验证执行器心跳
-            if (!redisUtil.hasKey(RedisConstant.ACTUATOR_HEARTBEAT.concat(name))) {
-                //添加到需要转移的任务集合中
-                taskInfoList.addAll(taskInfoService.getRestartList(name));
-                //添加到宕机的执行器列表
-                downAppName.add(name);
-            }
+        for (String name : downAppName) {
+            //添加到需要转移的任务集合中
+            taskInfoList.addAll(taskInfoService.getRestartList(name));
         }
         //如果存在正常的执行器，且存在宕机的执行器，且有需要转移的任务，则进行转移操作
         if (!downAppName.isEmpty() && !taskInfoList.isEmpty()) {
@@ -109,9 +94,12 @@ public class ScheduledTasks {
                 String appName = electUtils.actuatorElectUtils();
                 taskInfoBo.setAppName(appName);
                 taskInfoBo.setIncident(IncidentEnum.START.getCode());
-                rabbitTemplate.convertAndSend(ActuatorBind.ACTUATOR_EXCHANGE_NAME, ActuatorBind.ACTUATOR_ROUTING_KEY, taskInfoBo);
+                rabbitTemplate.convertAndSend(ActuatorBind.ACTUATOR_EXCHANGE_NAME, "", taskInfoBo);
                 log.info("执行器->{}宕机，任务已经转移到了->{}执行器", String.join(",", downAppName), appName);
             }
         }
+        //删除宕机的执行器
+        redisUtil.hDelete(RedisConstant.ACTUATOR_REGISTRY, downAppName.toArray(new Object[0]));
+        redisUtil.delete(RedisConstant.FAILOVER_IN);
     }
 }

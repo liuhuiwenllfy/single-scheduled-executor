@@ -39,6 +39,7 @@ public class MessageSubListener {
 
     @RabbitListener(queues = ActuatorBind.ACTUATOR_QUEUE_NAME)
     public void onMessage(TaskInfoBo taskInfoBo, Message message, Channel channel) throws IOException {
+        System.out.println(actuatorName);
         long deliveryTag = message.getMessageProperties().getDeliveryTag();
         try {
             if (actuatorName.equals(taskInfoBo.getAppName())) {
@@ -74,6 +75,7 @@ public class MessageSubListener {
                 channel.basicAck(deliveryTag, false);
             }
         } catch (Exception e) {
+            e.printStackTrace();
             channel.basicReject(deliveryTag, false);
         }
     }

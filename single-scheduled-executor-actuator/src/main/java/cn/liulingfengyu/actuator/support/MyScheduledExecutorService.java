@@ -102,9 +102,8 @@ public class MyScheduledExecutorService {
                                     //再次启动任务
                                     TaskInfoBo taskInfoBo = new TaskInfoBo();
                                     BeanUtils.copyProperties(currentTask, taskInfoBo);
-                                    taskInfoBo.setAppName(currentTask.getAppName());
                                     taskInfoBo.setIncident(IncidentEnum.UPDATE.getCode());
-                                    rabbitTemplate.convertAndSend(ActuatorBind.ACTUATOR_EXCHANGE_NAME, ActuatorBind.ACTUATOR_ROUTING_KEY, taskInfoBo);
+                                    rabbitTemplate.convertAndSend(ActuatorBind.ACTUATOR_EXCHANGE_NAME, "", taskInfoBo);
                                 } else {
                                     //任务已过期或完成
                                     currentTask.setDone(true);
