@@ -2,14 +2,14 @@ package cn.liulingfengyu.actuator.scheduled;
 
 import cn.hutool.json.JSONUtil;
 import cn.liulingfengyu.actuator.bo.TaskInfoBo;
-import cn.liulingfengyu.actuator.enums.IncidentEnum;
 import cn.liulingfengyu.actuator.entity.TaskInfo;
+import cn.liulingfengyu.actuator.enums.IncidentEnum;
 import cn.liulingfengyu.actuator.service.ITaskInfoService;
 import cn.liulingfengyu.actuator.support.MyScheduledExecutorService;
 import cn.liulingfengyu.rabbitmq.bind.ActuatorBind;
 import cn.liulingfengyu.redis.constant.RedisConstant;
+import cn.liulingfengyu.redis.utils.ElectUtils;
 import cn.liulingfengyu.redis.utils.RedisUtil;
-import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.BeanUtils;
@@ -18,7 +18,10 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 @Component
@@ -40,20 +43,30 @@ public class ScheduledTasks {
     @Autowired
     private RabbitTemplate rabbitTemplate;
 
+    @Autowired
+    private ElectUtils electUtils;
+
 
     /**
      * 每五秒执行一次，完成心跳检测
      */
     @Scheduled(fixedRate = 5000)
     public void heartbeatDetection() {
-        if (!redisUtil.hasKey(RedisConstant.ACTUATOR_HEARTBEAT.concat(actuatorName))){
-            //任务恢复，故障转移失败（单执行器），重启需要恢复的任务
+        if (!redisUtil.hasKey(RedisConstant.ACTUATOR_HEARTBEAT.concat(actuatorName))) {
+            //任务恢复
             myScheduledExecutorService.restart();
         }
         //心跳
         redisUtil.setEx(RedisConstant.ACTUATOR_HEARTBEAT.concat(actuatorName), actuatorName, 7000, TimeUnit.MILLISECONDS);
         //注册
         redisUtil.hPut(RedisConstant.ACTUATOR_REGISTRY, actuatorName, actuatorName);
+        //清理注册表
+        redisUtil.hGetAll(RedisConstant.ACTUATOR_REGISTRY).values().forEach(s -> {
+            if (!redisUtil.hasKey(RedisConstant.ACTUATOR_HEARTBEAT.concat((String) s))) {
+                //删除注册表
+                redisUtil.hDelete(RedisConstant.ACTUATOR_REGISTRY, s);
+            }
+        });
         log.info("执行器{}心跳正常", actuatorName);
     }
 
@@ -67,51 +80,38 @@ public class ScheduledTasks {
     }
 
     /**
-     * 每7秒执行一次，完成故障转移
+     * 每10秒执行一次，完成故障转移
      */
-    @Scheduled(fixedRate = 10000)
+    @Scheduled(fixedDelay = 10000)
     public void failover() {
         //获取执行器列表
-        List<String> actuatorInfoList = JSONUtil.toList(JSONUtil.toJsonStr(redisUtil.hGetAll(RedisConstant.ACTUATOR_REGISTRY).values()), String.class);
+        List<String> actuatorCollect = JSONUtil.toList(JSONUtil.toJsonStr(redisUtil.hGetAll(RedisConstant.ACTUATOR_REGISTRY).values()), String.class);
         //需要转移的任务集合
         List<TaskInfo> taskInfoList = new ArrayList<>();
         //宕机的执行器列表
         Set<String> downAppName = new HashSet<>();
-        //正常的执行器列表
-        Set<String> normalAppName = new HashSet<>();
         //循环执行器列表
-        for (String actuatorName: actuatorInfoList) {
+        for (String name : actuatorCollect) {
             //验证执行器心跳
-            if (Boolean.FALSE.equals(redisUtil.hasKey(RedisConstant.ACTUATOR_HEARTBEAT.concat(actuatorName)))) {
+            if (!redisUtil.hasKey(RedisConstant.ACTUATOR_HEARTBEAT.concat(name))) {
                 //添加到需要转移的任务集合中
-                taskInfoList.addAll(taskInfoService.getRestartList(actuatorName));
+                taskInfoList.addAll(taskInfoService.getRestartList(name));
                 //添加到宕机的执行器列表
-                downAppName.add(actuatorName);
-            } else {
-                //添加到正常的执行器列表
-                normalAppName.add(actuatorName);
+                downAppName.add(name);
             }
         }
         //如果存在正常的执行器，且存在宕机的执行器，且有需要转移的任务，则进行转移操作
-        if (!normalAppName.isEmpty() && !downAppName.isEmpty() && !taskInfoList.isEmpty()) {
-            Random random = new Random();
+        if (!downAppName.isEmpty() && !taskInfoList.isEmpty()) {
             //分发任务到正常的执行器
             for (TaskInfo taskInfo : taskInfoList) {
-                //随机获取一个正常的执行器
-                String appName = normalAppName.toArray()[random.nextInt(normalAppName.size())].toString();
                 TaskInfoBo taskInfoBo = new TaskInfoBo();
                 BeanUtils.copyProperties(taskInfo, taskInfoBo);
+                String appName = electUtils.actuatorElectUtils();
                 taskInfoBo.setAppName(appName);
                 taskInfoBo.setIncident(IncidentEnum.START.getCode());
                 rabbitTemplate.convertAndSend(ActuatorBind.ACTUATOR_EXCHANGE_NAME, ActuatorBind.ACTUATOR_ROUTING_KEY, taskInfoBo);
+                log.info("执行器->{}宕机，任务已经转移到了->{}执行器", String.join(",", downAppName), appName);
             }
-        }
-        if (!downAppName.isEmpty()) {
-            //删除宕机的执行器任务集合
-            QueryWrapper<TaskInfo> taskInfoQueryWrapper = new QueryWrapper<>();
-            taskInfoQueryWrapper.in(TaskInfo.APP_NAME, downAppName);
-            taskInfoService.remove(taskInfoQueryWrapper);
-            log.info("执行器->{}宕机，任务已经转移到了->{}执行器", String.join(",", downAppName), String.join(",", normalAppName));
         }
     }
 }

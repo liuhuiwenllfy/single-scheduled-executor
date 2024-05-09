@@ -1,27 +1,20 @@
 package cn.liulingfengyu.scheduledTask.service.impl;
 
 import cn.hutool.core.lang.UUID;
-import cn.hutool.json.JSONUtil;
 import cn.liulingfengyu.actuator.bo.TaskInfoBo;
 import cn.liulingfengyu.actuator.enums.IncidentEnum;
 import cn.liulingfengyu.rabbitmq.bind.ActuatorBind;
-import cn.liulingfengyu.redis.constant.RedisConstant;
-import cn.liulingfengyu.redis.utils.RedisUtil;
+import cn.liulingfengyu.redis.utils.ElectUtils;
 import cn.liulingfengyu.scheduledTask.dto.TaskInsertDto;
 import cn.liulingfengyu.scheduledTask.dto.TaskUpdateDto;
 import cn.liulingfengyu.scheduledTask.entity.TaskInfo;
 import cn.liulingfengyu.scheduledTask.mapper.TaskInfoMapper;
-import cn.liulingfengyu.scheduledTask.service.IActuatorInfoService;
 import cn.liulingfengyu.scheduledTask.service.IScheduledExecutorService;
 import com.baomidou.dynamic.datasource.annotation.DS;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-
-import java.util.Random;
-import java.util.Set;
-import java.util.stream.Collectors;
 
 /**
  * 任务管理实现类
@@ -33,13 +26,13 @@ import java.util.stream.Collectors;
 public class ScheduledExecutorServiceImpl implements IScheduledExecutorService {
 
     @Autowired
-    private RedisUtil redisUtil;
-
-    @Autowired
     private TaskInfoMapper taskInfoMapper;
 
     @Autowired
     private RabbitTemplate rabbitTemplate;
+
+    @Autowired
+    private ElectUtils electUtils;
 
     @Override
     public void insertItem(TaskInsertDto taskInsertDto) {
@@ -47,7 +40,7 @@ public class ScheduledExecutorServiceImpl implements IScheduledExecutorService {
         BeanUtils.copyProperties(taskInsertDto, taskInfoBo);
         taskInfoBo.setId(UUID.randomUUID().toString(true));
         taskInfoBo.setCancelled(true);
-        taskInfoBo.setAppName(getAppName());
+        taskInfoBo.setAppName(electUtils.actuatorElectUtils());
         taskInfoBo.setIncident(IncidentEnum.START.getCode());
         rabbitTemplate.convertAndSend(ActuatorBind.ACTUATOR_EXCHANGE_NAME, ActuatorBind.ACTUATOR_ROUTING_KEY, taskInfoBo);
     }
@@ -57,7 +50,7 @@ public class ScheduledExecutorServiceImpl implements IScheduledExecutorService {
         TaskInfo taskInfo = taskInfoMapper.selectById(id);
         TaskInfoBo taskInfoBo = new TaskInfoBo();
         BeanUtils.copyProperties(taskInfo, taskInfoBo);
-        taskInfoBo.setAppName(getAppName());
+        taskInfoBo.setAppName(electUtils.actuatorElectUtils());
         taskInfoBo.setIncident(IncidentEnum.START.getCode());
         taskInfoBo.setCancelled(false);
         taskInfoBo.setDone(false);
@@ -94,12 +87,5 @@ public class ScheduledExecutorServiceImpl implements IScheduledExecutorService {
         taskInfoBo.setAppName(taskInfo.getAppName());
         taskInfoBo.setIncident(IncidentEnum.REMOVE.getCode());
         rabbitTemplate.convertAndSend(ActuatorBind.ACTUATOR_EXCHANGE_NAME, ActuatorBind.ACTUATOR_ROUTING_KEY, taskInfoBo);
-    }
-
-    private String getAppName() {
-        //随机获取执行器
-        Set<String> appNames = JSONUtil.toList(JSONUtil.toJsonStr(redisUtil.hGetAll(RedisConstant.ACTUATOR_REGISTRY)), String.class).stream().filter(s -> redisUtil.hasKey(RedisConstant.ACTUATOR_HEARTBEAT.concat(s))).collect(Collectors.toSet());
-        Random random = new Random();
-        return appNames.toArray()[random.nextInt(appNames.size())].toString();
     }
 }

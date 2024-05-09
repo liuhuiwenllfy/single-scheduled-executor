@@ -1,5 +1,5 @@
 server:
-  port: 8005  #端口配置
+  port: 8001  #端口配置
 spring:
   datasource: #配置数据库
     dynamic:

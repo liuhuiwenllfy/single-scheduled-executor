@@ -23,7 +23,7 @@ import java.util.Date;
 public class SchedulingLogServiceImpl extends ServiceImpl<SchedulingLogMapper, SchedulingLog> implements ISchedulingLogService {
 
     @Override
-    public String insertItem(TaskInfo taskInfo) {
+    public void insertItem(TaskInfo taskInfo) {
         SchedulingLog schedulingLog = new SchedulingLog();
         schedulingLog.setTaskId(taskInfo.getId());
         schedulingLog.setAppName(taskInfo.getAppName());
@@ -32,6 +32,5 @@ public class SchedulingLogServiceImpl extends ServiceImpl<SchedulingLogMapper, S
         schedulingLog.setCreateTime(new Date());
         schedulingLog.setTenantId(taskInfo.getTenantId());
         this.save(schedulingLog);
-        return schedulingLog.getId();
     }
 }

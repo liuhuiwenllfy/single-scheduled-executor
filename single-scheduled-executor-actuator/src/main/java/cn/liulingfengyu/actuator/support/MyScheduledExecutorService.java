@@ -1,16 +1,13 @@
 package cn.liulingfengyu.actuator.support;
 
-import cn.hutool.json.JSONUtil;
 import cn.liulingfengyu.actuator.bo.CallbackBo;
 import cn.liulingfengyu.actuator.bo.TaskInfoBo;
-import cn.liulingfengyu.actuator.enums.IncidentEnum;
-import cn.liulingfengyu.actuator.entity.SchedulingLog;
 import cn.liulingfengyu.actuator.entity.TaskInfo;
+import cn.liulingfengyu.actuator.enums.IncidentEnum;
 import cn.liulingfengyu.actuator.service.ISchedulingLogService;
 import cn.liulingfengyu.actuator.service.ITaskInfoService;
 import cn.liulingfengyu.rabbitmq.bind.ActuatorBind;
-import cn.liulingfengyu.redis.constant.RedisConstant;
-import cn.liulingfengyu.redis.utils.RedisUtil;
+import cn.liulingfengyu.redis.utils.ElectUtils;
 import cn.liulingfengyu.tools.CronUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
@@ -19,12 +16,13 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
-import java.util.*;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
 
 /**
  * 调度执行器服务
@@ -34,6 +32,18 @@ import java.util.stream.Collectors;
 @Component
 @Slf4j
 public class MyScheduledExecutorService {
+
+    /**
+     * 当前执行器执行中的任务，key->任务id，value->计划对象
+     */
+    private final Map<String, ScheduledFuture<?>> map = new HashMap<>();
+    /**
+     * 计划执行程序服务
+     */
+    private final ScheduledExecutorService executor;
+
+    @Autowired
+    public RabbitTemplate rabbitTemplate;
 
     @Autowired
     private ITaskInfoService taskInfoService;
@@ -45,20 +55,7 @@ public class MyScheduledExecutorService {
     private String actuatorName;
 
     @Autowired
-    public RabbitTemplate rabbitTemplate;
-
-    @Autowired
-    private RedisUtil redisUtil;
-
-    /**
-     * 当前执行器执行中的任务，key->任务id，value->计划对象
-     */
-    private final Map<String, ScheduledFuture<?>> map = new HashMap<>();
-
-    /**
-     * 计划执行程序服务
-     */
-    private final ScheduledExecutorService executor;
+    private ElectUtils electUtils;
 
     public MyScheduledExecutorService(@Value("${actuator.core-pool-size}") int corePoolSize) {
         //核心线程数
@@ -67,7 +64,6 @@ public class MyScheduledExecutorService {
 
     /**
      * 任务重启
-     *
      */
     public void restart() {
         //获取当前执行器需要重启的任务
@@ -98,42 +94,29 @@ public class MyScheduledExecutorService {
                 ScheduledFuture<?> scheduledFuture = executor.schedule(
                         () -> {
                             //任务信息
-                            TaskInfo taskInfo1 = taskInfoService.getById(taskInfo.getId());
-                            //日志id
-                            String schedulingLogId = null;
-                            if (taskInfo1 != null) {
-                                //验证时间是否过期
-                                if (CronUtils.isExpired(taskInfo1.getCron())) {
-                                    //任务已过期或完成
-                                    taskInfo1.setDone(true);
-                                    taskInfo1.setCancelled(true);
+                            TaskInfo currentTask = taskInfoService.getById(taskInfo.getId());
+                            if (currentTask != null) {
+                                //获取下一执行时间（验证是否需要再次执行）
+                                long nextTimeDelayMilliseconds = CronUtils.getNextTimeDelayMilliseconds(currentTask.getCron());
+                                if (nextTimeDelayMilliseconds != -1) {
+                                    //再次启动任务
+                                    TaskInfoBo taskInfoBo = new TaskInfoBo();
+                                    BeanUtils.copyProperties(currentTask, taskInfoBo);
+                                    taskInfoBo.setAppName(currentTask.getAppName());
+                                    taskInfoBo.setIncident(IncidentEnum.UPDATE.getCode());
+                                    rabbitTemplate.convertAndSend(ActuatorBind.ACTUATOR_EXCHANGE_NAME, ActuatorBind.ACTUATOR_ROUTING_KEY, taskInfoBo);
                                 } else {
-                                    //获取下一执行时间
-                                    long nextTimeDelayMilliseconds = CronUtils.getNextTimeDelayMilliseconds(taskInfo1.getCron());
-                                    if (nextTimeDelayMilliseconds != -1) {
-                                        //再次启动任务
-                                        TaskInfoBo taskInfoBo = new TaskInfoBo();
-                                        BeanUtils.copyProperties(taskInfo1, taskInfoBo);
-                                        taskInfoBo.setAppName(taskInfo1.getAppName());
-                                        taskInfoBo.setIncident(IncidentEnum.UPDATE.getCode());
-                                        rabbitTemplate.convertAndSend(ActuatorBind.ACTUATOR_EXCHANGE_NAME, ActuatorBind.ACTUATOR_ROUTING_KEY, taskInfoBo);
-                                    } else {
-                                        //任务已过期或完成
-                                        taskInfo1.setCancelled(true);
-                                    }
-                                    //保存执行日志
-                                    schedulingLogId = schedulingLogService.insertItem(taskInfo1);
-                                    //推送执行消息
-                                    log.info("执行任务id->{}", taskInfo1.getId());
-                                    sendMessage(IncidentEnum.CARRY_OUT.getCode(), taskInfo1, "执行成功");
+                                    //任务已过期或完成
+                                    currentTask.setDone(true);
+                                    currentTask.setCancelled(true);
+                                    //更新任务
+                                    taskInfoService.updateById(currentTask);
                                 }
-                                //更新任务
-                                taskInfoService.updateById(taskInfo1);
-                                //完成任务更新日志
-                                SchedulingLog schedulingLog = new SchedulingLog();
-                                schedulingLog.setId(schedulingLogId);
-                                schedulingLog.setDone(true);
-                                schedulingLogService.updateById(schedulingLog);
+                                //保存执行日志
+                                schedulingLogService.insertItem(currentTask);
+                                //推送执行消息
+                                log.info("执行任务id->{}", currentTask.getId());
+                                sendMessage(IncidentEnum.CARRY_OUT.getCode(), currentTask, "执行成功");
                             }
                         },
                         initialDelay,
@@ -210,7 +193,6 @@ public class MyScheduledExecutorService {
         try {
             ScheduledFuture<?> scheduledFuture = map.get(taskInfo.getId());
             scheduledFuture.cancel(false);
-            map.remove(taskInfo.getId());
             startOnce(taskInfo, IncidentEnum.UPDATE.getCode());
         } catch (Exception e) {
             log.error("任务->{}修改失败，错误信息->{}", taskInfo.getId(), e.getMessage());
@@ -225,10 +207,7 @@ public class MyScheduledExecutorService {
         callbackBo.setIncident(incident);
         callbackBo.setTaskInfoBo(taskInfoBo);
         callbackBo.setErrorMsg(errorMsg);
-        //获取调度器列表
-        Set<String> adminInfoList = JSONUtil.toList(JSONUtil.toJsonStr(redisUtil.hGetAll(RedisConstant.ADMIN_REGISTRY)), String.class).stream().filter(s -> redisUtil.hasKey(RedisConstant.ADMIN_HEARTBEAT.concat(s))).collect(Collectors.toSet());
-        Random random = new Random();
-        callbackBo.setSchedulerName(adminInfoList.toArray()[random.nextInt(adminInfoList.size())].toString());
+        callbackBo.setSchedulerName(electUtils.adminElectUtils());
         rabbitTemplate.convertAndSend(ActuatorBind.ACTUATOR_CALLBACK_EXCHANGE_NAME, ActuatorBind.ACTUATOR_CALLBACK_ROUTING_KEY, callbackBo);
     }
 }

@@ -1,8 +1,8 @@
 package cn.liulingfengyu.actuator.support;
 
 import cn.liulingfengyu.actuator.bo.TaskInfoBo;
-import cn.liulingfengyu.actuator.enums.IncidentEnum;
 import cn.liulingfengyu.actuator.entity.TaskInfo;
+import cn.liulingfengyu.actuator.enums.IncidentEnum;
 import cn.liulingfengyu.actuator.service.ITaskInfoService;
 import cn.liulingfengyu.rabbitmq.bind.ActuatorBind;
 import com.rabbitmq.client.Channel;
@@ -46,7 +46,7 @@ public class MessageSubListener {
                 if (IncidentEnum.START.getCode().equals(taskInfoBo.getIncident())) {
                     //检查任务是否在执行中
                     TaskInfo taskInfo = taskInfoService.getById(taskInfoBo.getId());
-                    if (taskInfo == null || taskInfoService.getById(taskInfoBo.getId()).isCancelled()) {
+                    if (taskInfo == null || taskInfo.isCancelled()) {
                         taskInfo = new TaskInfo();
                         BeanUtils.copyProperties(taskInfoBo, taskInfo);
                         taskInfo.setCreateTime(new Date());

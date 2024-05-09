@@ -1,5 +1,5 @@
 server:
-  port: 8007  #端口配置
+  port: 8004  #端口配置
 spring:
   datasource: #配置数据库
     dynamic:
@@ -44,7 +44,7 @@ spring:
           initial-interval: 2000ms
           multiplier: 2
 app:
-  name: admin-1 #调度中心名称
+  name: admin-4 #调度中心名称
 logging:
   level:
     cn.liulingfengyu.scheduledTask: debug

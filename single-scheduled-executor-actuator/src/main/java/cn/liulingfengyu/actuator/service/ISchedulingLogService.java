@@ -19,6 +19,6 @@ public interface ISchedulingLogService extends IService<SchedulingLog> {
      *
      * @param taskInfo 入参
      */
-    String insertItem(TaskInfo taskInfo);
+    void insertItem(TaskInfo taskInfo);
 
 }
