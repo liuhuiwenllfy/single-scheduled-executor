@@ -38,7 +38,6 @@ public class MessageSubListener {
 
     @RabbitListener(queues = "${app.name}")
     public void onMessage(TaskInfoBo taskInfoBo, Message message, Channel channel) throws IOException {
-        System.out.println(actuatorName);
         long deliveryTag = message.getMessageProperties().getDeliveryTag();
         try {
             if (actuatorName.equals(taskInfoBo.getAppName())) {
@@ -71,10 +70,9 @@ public class MessageSubListener {
                     BeanUtils.copyProperties(taskInfoBo, taskInfo);
                     myScheduledExecutorService.remove(taskInfo, true);
                 }
-                channel.basicAck(deliveryTag, false);
             }
+            channel.basicAck(deliveryTag, false);
         } catch (Exception e) {
-            e.printStackTrace();
             channel.basicReject(deliveryTag, false);
         }
     }
