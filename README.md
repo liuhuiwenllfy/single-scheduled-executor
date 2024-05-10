@@ -5,7 +5,8 @@
 为了解决项目中定时器任务相关业务，我们推出了自己的定时器框架。
 
 #### 软件架构
-![集群化定时器框架架构图.jpg](https://resource.liulingfengyu.cn/img/集群化定时器框架架构图.jpg)![]()
+
+![集群化定时器框架架构图.jpg](https://resource.liulingfengyu.cn/img/集群化定时器框架架构图.jpg)
 
 #### 安装教程
 
