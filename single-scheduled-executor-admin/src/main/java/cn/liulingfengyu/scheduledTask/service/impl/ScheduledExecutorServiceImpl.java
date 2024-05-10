@@ -3,7 +3,7 @@ package cn.liulingfengyu.scheduledTask.service.impl;
 import cn.hutool.core.lang.UUID;
 import cn.liulingfengyu.actuator.bo.TaskInfoBo;
 import cn.liulingfengyu.actuator.enums.IncidentEnum;
-import cn.liulingfengyu.rabbitmq.bind.ActuatorBind;
+import cn.liulingfengyu.rabbitmq.config.RabbitMQConfig;
 import cn.liulingfengyu.redis.utils.ElectUtils;
 import cn.liulingfengyu.scheduledTask.dto.TaskInsertDto;
 import cn.liulingfengyu.scheduledTask.dto.TaskUpdateDto;
@@ -42,7 +42,7 @@ public class ScheduledExecutorServiceImpl implements IScheduledExecutorService {
         taskInfoBo.setCancelled(true);
         taskInfoBo.setAppName(electUtils.actuatorElectUtils());
         taskInfoBo.setIncident(IncidentEnum.START.getCode());
-        rabbitTemplate.convertAndSend(ActuatorBind.ACTUATOR_EXCHANGE_NAME, "", taskInfoBo);
+        sendMessage(taskInfoBo);
     }
 
     @Override
@@ -54,7 +54,7 @@ public class ScheduledExecutorServiceImpl implements IScheduledExecutorService {
         taskInfoBo.setIncident(IncidentEnum.START.getCode());
         taskInfoBo.setCancelled(false);
         taskInfoBo.setDone(false);
-        rabbitTemplate.convertAndSend(ActuatorBind.ACTUATOR_EXCHANGE_NAME, "", taskInfoBo);
+        sendMessage(taskInfoBo);
     }
 
     @Override
@@ -64,7 +64,7 @@ public class ScheduledExecutorServiceImpl implements IScheduledExecutorService {
         BeanUtils.copyProperties(taskUpdateDto, taskInfoBo);
         taskInfoBo.setAppName(taskInfo.getAppName());
         taskInfoBo.setIncident(IncidentEnum.UPDATE.getCode());
-        rabbitTemplate.convertAndSend(ActuatorBind.ACTUATOR_EXCHANGE_NAME, "", taskInfoBo);
+        sendMessage(taskInfoBo);
     }
 
     @Override
@@ -75,7 +75,7 @@ public class ScheduledExecutorServiceImpl implements IScheduledExecutorService {
         taskInfoBo.setTitle(taskInfo.getTitle());
         taskInfoBo.setAppName(taskInfo.getAppName());
         taskInfoBo.setIncident(IncidentEnum.STOP.getCode());
-        rabbitTemplate.convertAndSend(ActuatorBind.ACTUATOR_EXCHANGE_NAME, "", taskInfoBo);
+        sendMessage(taskInfoBo);
     }
 
     @Override
@@ -86,6 +86,13 @@ public class ScheduledExecutorServiceImpl implements IScheduledExecutorService {
         taskInfoBo.setTitle(taskInfo.getTitle());
         taskInfoBo.setAppName(taskInfo.getAppName());
         taskInfoBo.setIncident(IncidentEnum.REMOVE.getCode());
-        rabbitTemplate.convertAndSend(ActuatorBind.ACTUATOR_EXCHANGE_NAME, "", taskInfoBo);
+        sendMessage(taskInfoBo);
+    }
+
+    private void sendMessage(TaskInfoBo taskInfoBo) {
+        rabbitTemplate.convertAndSend(RabbitMQConfig.ACTUATOR_EXCHANGE_NAME, "", taskInfoBo, message -> {
+            message.getMessageProperties().setExpiration("60000"); // 设置消息过期时间为60秒
+            return message;
+        });
     }
 }

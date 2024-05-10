@@ -1,22 +1,23 @@
 package cn.liulingfengyu.actuator.scheduled;
 
-import cn.liulingfengyu.actuator.bo.TaskInfoBo;
+import cn.liulingfengyu.actuator.bind.ActuatorBind;
 import cn.liulingfengyu.actuator.entity.TaskInfo;
-import cn.liulingfengyu.actuator.enums.IncidentEnum;
 import cn.liulingfengyu.actuator.service.ITaskInfoService;
 import cn.liulingfengyu.actuator.support.MyScheduledExecutorService;
-import cn.liulingfengyu.rabbitmq.bind.ActuatorBind;
 import cn.liulingfengyu.redis.constant.RedisConstant;
 import cn.liulingfengyu.redis.utils.ElectUtils;
 import cn.liulingfengyu.redis.utils.RedisUtil;
+import com.rabbitmq.client.Channel;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.amqp.core.Message;
+import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
-import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -33,7 +34,7 @@ public class ScheduledTasks {
     @Autowired
     private MyScheduledExecutorService myScheduledExecutorService;
 
-    @Value("${app.name}")
+    @Value("${actuator.name}")
     private String actuatorName;
 
     @Autowired
@@ -44,7 +45,6 @@ public class ScheduledTasks {
 
     @Autowired
     private ElectUtils electUtils;
-
 
     /**
      * 每五秒执行一次，完成心跳检测
@@ -67,9 +67,8 @@ public class ScheduledTasks {
             }
         });
         //故障转移
-        if (!downAppName.isEmpty() && !redisUtil.hasKey(RedisConstant.FAILOVER_IN)) {
-            redisUtil.set(RedisConstant.FAILOVER_IN, actuatorName);
-            failover(downAppName);
+        if (!downAppName.isEmpty()) {
+            rabbitTemplate.convertAndSend(ActuatorBind.FAILOVER_EXCHANGE_NAME, ActuatorBind.FAILOVER_ROUTING_KEY, downAppName);
         }
         log.info("执行器{}心跳正常", actuatorName);
     }
@@ -77,7 +76,9 @@ public class ScheduledTasks {
     /**
      * 故障转移
      */
-    private void failover(Set<String> downAppName) {
+    @RabbitListener(queues = ActuatorBind.FAILOVER_QUEUE_NAME)
+    private void failover(Set<String> downAppName, Message message, Channel channel) {
+        long deliveryTag = message.getMessageProperties().getDeliveryTag();
         //需要转移的任务集合
         List<TaskInfo> taskInfoList = new ArrayList<>();
         //循环执行器列表
@@ -89,17 +90,18 @@ public class ScheduledTasks {
         if (!downAppName.isEmpty() && !taskInfoList.isEmpty()) {
             //分发任务到正常的执行器
             for (TaskInfo taskInfo : taskInfoList) {
-                TaskInfoBo taskInfoBo = new TaskInfoBo();
-                BeanUtils.copyProperties(taskInfo, taskInfoBo);
-                String appName = electUtils.actuatorElectUtils();
-                taskInfoBo.setAppName(appName);
-                taskInfoBo.setIncident(IncidentEnum.START.getCode());
-                rabbitTemplate.convertAndSend(ActuatorBind.ACTUATOR_EXCHANGE_NAME, "", taskInfoBo);
-                log.info("执行器->{}宕机，任务已经转移到了->{}执行器", String.join(",", downAppName), appName);
+                taskInfo.setAppName(electUtils.actuatorElectUtils());
+                taskInfoService.updateById(taskInfo);
+                myScheduledExecutorService.startTheNextTask(taskInfo);
+                log.info("执行器->{}宕机，任务已经转移到了->{}执行器", String.join(",", downAppName), taskInfo.getAppName());
             }
         }
         //删除宕机的执行器
         redisUtil.hDelete(RedisConstant.ACTUATOR_REGISTRY, downAppName.toArray(new Object[0]));
-        redisUtil.delete(RedisConstant.FAILOVER_IN);
+        try {
+            channel.basicAck(deliveryTag, false);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 }

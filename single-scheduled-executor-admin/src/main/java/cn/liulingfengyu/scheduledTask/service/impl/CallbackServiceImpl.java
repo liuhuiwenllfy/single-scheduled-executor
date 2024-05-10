@@ -3,7 +3,7 @@ package cn.liulingfengyu.scheduledTask.service.impl;
 import cn.liulingfengyu.actuator.bo.CallbackBo;
 import cn.liulingfengyu.actuator.bo.TaskInfoBo;
 import cn.liulingfengyu.actuator.enums.IncidentEnum;
-import cn.liulingfengyu.rabbitmq.bind.ActuatorBind;
+import cn.liulingfengyu.rabbitmq.bind.CallbackBind;
 import cn.liulingfengyu.scheduledTask.enums.InterfaceEnum;
 import cn.liulingfengyu.scheduledTask.service.ISchedulingLogService;
 import com.rabbitmq.client.Channel;
@@ -11,7 +11,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.core.Message;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
@@ -31,7 +30,7 @@ public class CallbackServiceImpl {
     @Autowired
     private ISchedulingLogService schedulingLogService;
 
-    @RabbitListener(queues = ActuatorBind.ACTUATOR_CALLBACK_QUEUE_NAME)
+    @RabbitListener(queues = CallbackBind.CALLBACK_QUEUE_NAME)
     public void callback(CallbackBo callbackBo, Message message, Channel channel) throws IOException {
         long deliveryTag = message.getMessageProperties().getDeliveryTag();
         try {

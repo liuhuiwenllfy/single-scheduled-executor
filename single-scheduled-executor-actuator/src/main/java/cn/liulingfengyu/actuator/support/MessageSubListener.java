@@ -30,13 +30,13 @@ public class MessageSubListener {
     @Autowired
     private MyScheduledExecutorService myScheduledExecutorService;
 
-    @Value("${app.name}")
+    @Value("${actuator.name}")
     private String actuatorName;
 
     @Autowired
     private ITaskInfoService taskInfoService;
 
-    @RabbitListener(queues = "${app.name}")
+    @RabbitListener(queues = "${actuator.name}")
     public void onMessage(TaskInfoBo taskInfoBo, Message message, Channel channel) throws IOException {
         long deliveryTag = message.getMessageProperties().getDeliveryTag();
         try {

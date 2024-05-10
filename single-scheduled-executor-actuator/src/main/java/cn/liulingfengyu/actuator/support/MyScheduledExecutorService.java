@@ -6,7 +6,8 @@ import cn.liulingfengyu.actuator.entity.TaskInfo;
 import cn.liulingfengyu.actuator.enums.IncidentEnum;
 import cn.liulingfengyu.actuator.service.ISchedulingLogService;
 import cn.liulingfengyu.actuator.service.ITaskInfoService;
-import cn.liulingfengyu.rabbitmq.bind.ActuatorBind;
+import cn.liulingfengyu.rabbitmq.bind.CallbackBind;
+import cn.liulingfengyu.rabbitmq.config.RabbitMQConfig;
 import cn.liulingfengyu.redis.utils.ElectUtils;
 import cn.liulingfengyu.tools.CronUtils;
 import lombok.extern.slf4j.Slf4j;
@@ -51,13 +52,13 @@ public class MyScheduledExecutorService {
     @Autowired
     private ISchedulingLogService schedulingLogService;
 
-    @Value("${app.name}")
+    @Value("${actuator.name}")
     private String actuatorName;
 
     @Autowired
     private ElectUtils electUtils;
 
-    public MyScheduledExecutorService(@Value("${app.core-pool-size}") int corePoolSize) {
+    public MyScheduledExecutorService(@Value("${actuator.core-pool-size}") int corePoolSize) {
         //核心线程数
         executor = new ScheduledThreadPoolExecutor(corePoolSize <= 0 ? 2 : corePoolSize);
     }
@@ -87,7 +88,6 @@ public class MyScheduledExecutorService {
         if (initialDelay != -1) {
             //保存任务信息
             taskInfo.setNextExecutionTime(System.currentTimeMillis() + initialDelay);
-            taskInfo.setAppName(actuatorName);
             taskInfo.setCancelled(false);
             if (taskInfoService.saveOrUpdate(taskInfo)) {
                 //执行任务
@@ -99,11 +99,7 @@ public class MyScheduledExecutorService {
                                 //获取下一执行时间（验证是否需要再次执行）
                                 long nextTimeDelayMilliseconds = CronUtils.getNextTimeDelayMilliseconds(currentTask.getCron());
                                 if (nextTimeDelayMilliseconds != -1) {
-                                    //再次启动任务
-                                    TaskInfoBo taskInfoBo = new TaskInfoBo();
-                                    BeanUtils.copyProperties(currentTask, taskInfoBo);
-                                    taskInfoBo.setIncident(IncidentEnum.UPDATE.getCode());
-                                    rabbitTemplate.convertAndSend(ActuatorBind.ACTUATOR_EXCHANGE_NAME, "", taskInfoBo);
+                                    startTheNextTask(currentTask);
                                 } else {
                                     //任务已过期或完成
                                     currentTask.setDone(true);
@@ -191,12 +187,25 @@ public class MyScheduledExecutorService {
     public void update(TaskInfo taskInfo) {
         try {
             ScheduledFuture<?> scheduledFuture = map.get(taskInfo.getId());
-            scheduledFuture.cancel(false);
+            if (scheduledFuture != null) {
+                scheduledFuture.cancel(false);
+            }
             startOnce(taskInfo, IncidentEnum.UPDATE.getCode());
         } catch (Exception e) {
             log.error("任务->{}修改失败，错误信息->{}", taskInfo.getId(), e.getMessage());
             sendMessage(IncidentEnum.UPDATE.getCode(), taskInfo, "修改失败");
         }
+    }
+
+    public void startTheNextTask(TaskInfo currentTask) {
+        //再次启动任务
+        TaskInfoBo taskInfoBo = new TaskInfoBo();
+        BeanUtils.copyProperties(currentTask, taskInfoBo);
+        taskInfoBo.setIncident(IncidentEnum.UPDATE.getCode());
+        rabbitTemplate.convertAndSend(RabbitMQConfig.ACTUATOR_EXCHANGE_NAME, "", taskInfoBo, message -> {
+            message.getMessageProperties().setExpiration("60000"); // 设置消息过期时间为60秒
+            return message;
+        });
     }
 
     private void sendMessage(String incident, TaskInfo taskInfo, String errorMsg) {
@@ -207,6 +216,6 @@ public class MyScheduledExecutorService {
         callbackBo.setTaskInfoBo(taskInfoBo);
         callbackBo.setErrorMsg(errorMsg);
         callbackBo.setSchedulerName(electUtils.adminElectUtils());
-        rabbitTemplate.convertAndSend(ActuatorBind.ACTUATOR_CALLBACK_EXCHANGE_NAME, ActuatorBind.ACTUATOR_CALLBACK_ROUTING_KEY, callbackBo);
+        rabbitTemplate.convertAndSend(CallbackBind.CALLBACK_EXCHANGE_NAME, CallbackBind.CALLBACK_ROUTING_KEY, callbackBo);
     }
 }

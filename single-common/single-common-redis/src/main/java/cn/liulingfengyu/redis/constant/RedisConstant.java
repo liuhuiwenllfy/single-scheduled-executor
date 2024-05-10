@@ -24,9 +24,4 @@ public class RedisConstant {
      * 调度中心注册表
      */
     public static final String ACTUATOR_REGISTRY = "actuator_registry";
-
-    /**
-     * 故障转移执行中
-     */
-    public static final String FAILOVER_IN = "failover_in";
 }
