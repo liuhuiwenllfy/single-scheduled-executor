@@ -2,6 +2,7 @@ package cn.liulingfengyu.rabbitmq.bind;
 
 import org.springframework.amqp.core.*;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -11,16 +12,16 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class ActuatorBind {
 
-    public static final String ACTUATOR_QUEUE_NAME = "actuator_queue";
     public static final String ACTUATOR_EXCHANGE_NAME = "actuator_exchange";
-
     public static final String ACTUATOR_CALLBACK_QUEUE_NAME = "actuator_callback_queue";
     public static final String ACTUATOR_CALLBACK_EXCHANGE_NAME = "actuator_callback_exchange";
     public static final String ACTUATOR_CALLBACK_ROUTING_KEY = "actuator_callback_routing_key";
+    @Value("${app.name}")
+    private String actuatorName;
 
     @Bean
     public Queue actuatorQueue() {
-        return new Queue(ACTUATOR_QUEUE_NAME, true);
+        return new Queue(actuatorName, true);
     }
 
     @Bean

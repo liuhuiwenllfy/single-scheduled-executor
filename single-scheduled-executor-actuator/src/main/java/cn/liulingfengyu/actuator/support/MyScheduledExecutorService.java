@@ -51,13 +51,13 @@ public class MyScheduledExecutorService {
     @Autowired
     private ISchedulingLogService schedulingLogService;
 
-    @Value("${actuator.name}")
+    @Value("${app.name}")
     private String actuatorName;
 
     @Autowired
     private ElectUtils electUtils;
 
-    public MyScheduledExecutorService(@Value("${actuator.core-pool-size}") int corePoolSize) {
+    public MyScheduledExecutorService(@Value("${app.core-pool-size}") int corePoolSize) {
         //核心线程数
         executor = new ScheduledThreadPoolExecutor(corePoolSize <= 0 ? 2 : corePoolSize);
     }

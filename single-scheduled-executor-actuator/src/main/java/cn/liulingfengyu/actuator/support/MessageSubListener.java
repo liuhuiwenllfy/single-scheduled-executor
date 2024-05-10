@@ -4,7 +4,6 @@ import cn.liulingfengyu.actuator.bo.TaskInfoBo;
 import cn.liulingfengyu.actuator.entity.TaskInfo;
 import cn.liulingfengyu.actuator.enums.IncidentEnum;
 import cn.liulingfengyu.actuator.service.ITaskInfoService;
-import cn.liulingfengyu.rabbitmq.bind.ActuatorBind;
 import com.rabbitmq.client.Channel;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.core.Message;
@@ -31,13 +30,13 @@ public class MessageSubListener {
     @Autowired
     private MyScheduledExecutorService myScheduledExecutorService;
 
-    @Value("${actuator.name}")
+    @Value("${app.name}")
     private String actuatorName;
 
     @Autowired
     private ITaskInfoService taskInfoService;
 
-    @RabbitListener(queues = ActuatorBind.ACTUATOR_QUEUE_NAME)
+    @RabbitListener(queues = "${app.name}")
     public void onMessage(TaskInfoBo taskInfoBo, Message message, Channel channel) throws IOException {
         System.out.println(actuatorName);
         long deliveryTag = message.getMessageProperties().getDeliveryTag();

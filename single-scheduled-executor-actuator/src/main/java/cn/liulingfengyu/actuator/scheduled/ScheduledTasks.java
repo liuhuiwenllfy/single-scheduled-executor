@@ -1,6 +1,5 @@
 package cn.liulingfengyu.actuator.scheduled;
 
-import cn.hutool.json.JSONUtil;
 import cn.liulingfengyu.actuator.bo.TaskInfoBo;
 import cn.liulingfengyu.actuator.entity.TaskInfo;
 import cn.liulingfengyu.actuator.enums.IncidentEnum;
@@ -34,7 +33,7 @@ public class ScheduledTasks {
     @Autowired
     private MyScheduledExecutorService myScheduledExecutorService;
 
-    @Value("${actuator.name}")
+    @Value("${app.name}")
     private String actuatorName;
 
     @Autowired
@@ -68,12 +67,13 @@ public class ScheduledTasks {
             }
         });
         //故障转移
-        if (!downAppName.isEmpty() && !redisUtil.hasKey(RedisConstant.FAILOVER_IN)){
+        if (!downAppName.isEmpty() && !redisUtil.hasKey(RedisConstant.FAILOVER_IN)) {
             redisUtil.set(RedisConstant.FAILOVER_IN, actuatorName);
             failover(downAppName);
         }
         log.info("执行器{}心跳正常", actuatorName);
     }
+
     /**
      * 故障转移
      */

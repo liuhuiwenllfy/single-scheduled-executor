@@ -43,7 +43,7 @@ spring:
           max-interval: 20000ms
           initial-interval: 2000ms
           multiplier: 2
-actuator:
+app:
   name: actuator-1 #执行器名称
   core-pool-size: 2 #调度器线程池核心线程数
 logging:
