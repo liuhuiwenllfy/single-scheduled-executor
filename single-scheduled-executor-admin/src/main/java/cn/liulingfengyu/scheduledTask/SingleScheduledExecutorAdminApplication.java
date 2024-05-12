@@ -6,7 +6,6 @@ import org.mybatis.spring.annotation.MapperScan;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.ComponentScan;
-import org.springframework.scheduling.annotation.EnableScheduling;
 
 
 /**
@@ -17,7 +16,6 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 @SpringBootApplication
 @ComponentScan(basePackages = "cn.liulingfengyu")
 @MapperScan("cn.liulingfengyu.scheduledTask.mapper")
-@EnableScheduling
 @OpenAPIDefinition(info = @Info(title = "single-scheduled-executor", description = "定时器任务框架", version = "1.0.0"))
 public class SingleScheduledExecutorAdminApplication {
     public static void main(String[] args) {

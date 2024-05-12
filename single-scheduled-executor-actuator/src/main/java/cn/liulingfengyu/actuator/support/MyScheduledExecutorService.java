@@ -8,7 +8,6 @@ import cn.liulingfengyu.actuator.service.ISchedulingLogService;
 import cn.liulingfengyu.actuator.service.ITaskInfoService;
 import cn.liulingfengyu.rabbitmq.bind.CallbackBind;
 import cn.liulingfengyu.rabbitmq.config.RabbitMQConfig;
-import cn.liulingfengyu.redis.utils.ElectUtils;
 import cn.liulingfengyu.tools.CronUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
@@ -54,9 +53,6 @@ public class MyScheduledExecutorService {
 
     @Value("${actuator.name}")
     private String actuatorName;
-
-    @Autowired
-    private ElectUtils electUtils;
 
     public MyScheduledExecutorService(@Value("${actuator.core-pool-size}") int corePoolSize) {
         //核心线程数
@@ -215,7 +211,6 @@ public class MyScheduledExecutorService {
         callbackBo.setIncident(incident);
         callbackBo.setTaskInfoBo(taskInfoBo);
         callbackBo.setErrorMsg(errorMsg);
-        callbackBo.setSchedulerName(electUtils.adminElectUtils());
         rabbitTemplate.convertAndSend(CallbackBind.CALLBACK_EXCHANGE_NAME, CallbackBind.CALLBACK_ROUTING_KEY, callbackBo);
     }
 }

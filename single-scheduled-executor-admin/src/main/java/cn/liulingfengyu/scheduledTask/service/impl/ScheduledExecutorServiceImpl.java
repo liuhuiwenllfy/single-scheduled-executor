@@ -91,7 +91,7 @@ public class ScheduledExecutorServiceImpl implements IScheduledExecutorService {
 
     private void sendMessage(TaskInfoBo taskInfoBo) {
         rabbitTemplate.convertAndSend(RabbitMQConfig.ACTUATOR_EXCHANGE_NAME, "", taskInfoBo, message -> {
-            message.getMessageProperties().setExpiration("60000"); // 设置消息过期时间为60秒
+            message.getMessageProperties().setExpiration("1800000"); // 设置消息过期时间为30分钟
             return message;
         });
     }

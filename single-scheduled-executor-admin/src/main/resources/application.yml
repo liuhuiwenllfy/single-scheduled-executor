@@ -43,8 +43,6 @@ spring:
           max-interval: 20000ms
           initial-interval: 2000ms
           multiplier: 2
-app:
-  name: admin-4 #调度中心名称
 logging:
   level:
     cn.liulingfengyu.scheduledTask: debug
