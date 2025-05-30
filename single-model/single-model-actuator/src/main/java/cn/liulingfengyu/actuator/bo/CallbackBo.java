@@ -8,9 +8,9 @@ import lombok.Setter;
 public class CallbackBo {
 
     /**
-     * 回调类型
+     * 全局唯一id
      */
-    private String incident;
+    private String uuId;
 
     /**
      * 任务信息

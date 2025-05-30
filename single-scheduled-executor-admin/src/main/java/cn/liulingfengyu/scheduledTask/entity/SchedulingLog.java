@@ -25,14 +25,6 @@ import java.util.Date;
 @TableName("s_scheduling_log")
 public class SchedulingLog extends Model<SchedulingLog> {
 
-    public static final String ID = "id";
-    public static final String TASK_ID = "task_id";
-    public static final String APP_NAME = "app_name";
-    public static final String TASK_PARAM = "task_param";
-    public static final String COMPLETE_STATE = "complete_state";
-    public static final String RESPONSE_RESULT = "response_result";
-    public static final String CREATE_TIME = "create_time";
-    public static final String TENANT_ID = "tenant_id";
     private static final long serialVersionUID = 1L;
     /**
      * 主键

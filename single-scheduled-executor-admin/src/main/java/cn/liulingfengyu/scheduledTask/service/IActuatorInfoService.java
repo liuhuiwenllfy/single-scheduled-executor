@@ -25,11 +25,10 @@ public interface IActuatorInfoService {
 
     /**
      * 批量删除执行器
+     *
      * @param idList 执行器ids
      * @return boolean
      */
     boolean deleteBatchByIdList(List<String> idList);
-
-
 
 }

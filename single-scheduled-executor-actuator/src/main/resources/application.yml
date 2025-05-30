@@ -24,11 +24,6 @@ spring:
         test-on-return: false
         pool-prepared-statements: true
         max-pool-prepared-statement-per-connection-size: 20
-  redis: #redis参数配置
-    host: 127.0.0.1
-    port: 6379
-    password:
-    database: 0
   rabbitmq:
     host: 127.0.0.1
     port: 5672
@@ -43,6 +38,12 @@ spring:
           max-interval: 20000ms
           initial-interval: 2000ms
           multiplier: 2
+  data:
+    redis:
+      host: 127.0.0.1
+      port: 6379
+      database: 0
+      password: 123456
 actuator:
   name: actuator-1 #执行器名称
   core-pool-size: 2 #调度器线程池核心线程数

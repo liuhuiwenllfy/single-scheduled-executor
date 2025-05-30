@@ -15,8 +15,8 @@ import com.baomidou.mybatisplus.core.metadata.IPage;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import lombok.AllArgsConstructor;
 import org.springdoc.api.annotations.ParameterObject;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
@@ -31,13 +31,12 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/scheduledExecutor/taskInfo")
 @Tag(name = "任务管理")
+@AllArgsConstructor
 public class TaskInfoController {
 
-    @Autowired
-    private IScheduledExecutorService scheduledExecutorService;
+    private final IScheduledExecutorService scheduledExecutorService;
 
-    @Autowired
-    private ITaskInfoService taskInfoService;
+    private final ITaskInfoService taskInfoService;
 
     /**
      * 条件分页查询任务

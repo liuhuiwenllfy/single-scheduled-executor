@@ -2,9 +2,9 @@ package cn.liulingfengyu.mybatisplus.entity;
 
 
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 
-import javax.validation.constraints.NotNull;
 
 /**
  * 分页包装类

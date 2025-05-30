@@ -23,18 +23,8 @@ import java.util.Date;
 @TableName("s_task_info")
 public class TaskInfo extends Model<TaskInfo> {
 
-    public static final String ID = "id";
-    public static final String CODE = "code";
-    public static final String TITLE = "title";
-    public static final String APP_NAME = "app_name";
-    public static final String TASK_PARAM = "task_param";
-    public static final String CANCELLED = "cancelled";
-    public static final String DONE = "done";
-    public static final String NEXT_EXECUTION_TIME = "next_execution_time";
-    public static final String CREATE_TIME = "create_time";
-    public static final String TENANT_ID = "tenant_id";
-    public static final String CRON = "cron";
     private static final long serialVersionUID = 1L;
+
     @TableId(value = "id", type = IdType.ASSIGN_UUID)
     private String id;
     /**

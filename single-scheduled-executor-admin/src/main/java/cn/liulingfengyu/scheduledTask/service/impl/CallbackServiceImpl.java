@@ -2,18 +2,20 @@ package cn.liulingfengyu.scheduledTask.service.impl;
 
 import cn.liulingfengyu.actuator.bo.CallbackBo;
 import cn.liulingfengyu.actuator.bo.TaskInfoBo;
-import cn.liulingfengyu.actuator.enums.IncidentEnum;
 import cn.liulingfengyu.rabbitmq.bind.CallbackBind;
-import cn.liulingfengyu.scheduledTask.enums.InterfaceEnum;
-import cn.liulingfengyu.scheduledTask.service.ISchedulingLogService;
+import cn.liulingfengyu.redis.constant.RedisConstant;
+import cn.liulingfengyu.scheduledTask.handler.CallbackHandler;
 import com.rabbitmq.client.Channel;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.core.Message;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
+import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 /**
  * <p>
@@ -28,23 +30,33 @@ import java.io.IOException;
 public class CallbackServiceImpl {
 
     @Autowired
-    private ISchedulingLogService schedulingLogService;
+    private RedisTemplate<String, String> redisTemplate;
+
+    @Autowired
+    private List<CallbackHandler> handlers;
 
     @RabbitListener(queues = CallbackBind.CALLBACK_QUEUE_NAME)
     public void callback(CallbackBo callbackBo, Message message, Channel channel) throws IOException {
         long deliveryTag = message.getMessageProperties().getDeliveryTag();
+        // 消息幂等处理
+        String redisKey = RedisConstant.CALLBACK_IDEMPOTENT.concat(callbackBo.getUuId());
+        if (Boolean.TRUE.equals(redisTemplate.opsForValue().setIfAbsent(redisKey, "1", 1, TimeUnit.DAYS))) {
+            channel.basicAck(deliveryTag, false);
+            return;
+        }
         try {
-            String incident = callbackBo.getIncident();
             TaskInfoBo taskInfoBo = callbackBo.getTaskInfoBo();
-            if (IncidentEnum.CARRY_OUT.getCode().equals(incident)) {
-                //删除30天前的执行器日志
-                if (taskInfoBo.getCode().equals(InterfaceEnum.DELETE_THIRTY_DAYS_AGO_ACTUATOR_LOGS.getCode())) {
-                    schedulingLogService.deleteThirtyDaysAgoActuatorLogs();
+            String taskCode = taskInfoBo.getCode();
+            // 查找匹配的处理器
+            for (CallbackHandler handler : handlers) {
+                if (handler.supports(taskCode)) {
+                    handler.handle(callbackBo);
+                    break;
                 }
             }
-            log.info("任务->{}，执行器->{}，消息->{}", taskInfoBo.getTitle(), taskInfoBo.getAppName(), callbackBo.getErrorMsg());
             channel.basicAck(deliveryTag, false);
         } catch (Exception e) {
+            log.error("消息处理失败", e);
             channel.basicReject(deliveryTag, false);
         }
     }
