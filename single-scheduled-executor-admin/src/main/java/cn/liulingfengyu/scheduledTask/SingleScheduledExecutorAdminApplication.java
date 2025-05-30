@@ -15,7 +15,7 @@ import org.springframework.context.annotation.ComponentScan;
  */
 @SpringBootApplication
 @ComponentScan(basePackages = "cn.liulingfengyu")
-@MapperScan("cn.liulingfengyu.scheduledTask.mapper")
+@MapperScan("cn.liulingfengyu.actuator.mapper")
 @OpenAPIDefinition(info = @Info(title = "single-scheduled-executor", description = "定时器任务框架", version = "1.0.0"))
 public class SingleScheduledExecutorAdminApplication {
     public static void main(String[] args) {

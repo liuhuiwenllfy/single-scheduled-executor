@@ -3,8 +3,6 @@ package cn.liulingfengyu.actuator.bo;
 import lombok.Getter;
 import lombok.Setter;
 
-import java.util.Date;
-
 @Getter
 @Setter
 public class TaskInfoBo {
@@ -38,11 +36,6 @@ public class TaskInfoBo {
     private boolean cancelled;
 
     /**
-     * 租户号
-     */
-    private String tenantId;
-
-    /**
      * cron
      */
     private String cron;
@@ -51,14 +44,7 @@ public class TaskInfoBo {
      * 是否已完成
      */
     private boolean done;
-    /**
-     * 下一次执行时间
-     */
-    private long nextExecutionTime;
-    /**
-     * 创建时间
-     */
-    private Date createTime;
+
 
     /**
      * 消息类型

@@ -1,15 +1,15 @@
 package cn.liulingfengyu.scheduledTask.controller;
 
+import cn.liulingfengyu.actuator.dto.SchedulingLogDto;
+import cn.liulingfengyu.actuator.service.ISchedulingLogService;
+import cn.liulingfengyu.actuator.vo.SchedulingLogVo;
 import cn.liulingfengyu.mybatisplus.entity.PageInfo;
-import cn.liulingfengyu.scheduledTask.dto.SchedulingLogDto;
-import cn.liulingfengyu.scheduledTask.service.ISchedulingLogService;
-import cn.liulingfengyu.scheduledTask.vo.SchedulingLogVo;
 import cn.liulingfengyu.tools.exception.RespJson;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.AllArgsConstructor;
-import org.springdoc.api.annotations.ParameterObject;
+import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;

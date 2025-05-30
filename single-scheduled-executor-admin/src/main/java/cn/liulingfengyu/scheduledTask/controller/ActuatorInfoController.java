@@ -1,14 +1,14 @@
 package cn.liulingfengyu.scheduledTask.controller;
 
-import cn.liulingfengyu.scheduledTask.dto.ActuatorInfoDto;
-import cn.liulingfengyu.scheduledTask.service.IActuatorInfoService;
-import cn.liulingfengyu.scheduledTask.vo.ActuatorInfoVo;
+import cn.liulingfengyu.actuator.dto.ActuatorInfoDto;
+import cn.liulingfengyu.actuator.service.IActuatorInfoService;
+import cn.liulingfengyu.actuator.vo.ActuatorInfoVo;
 import cn.liulingfengyu.tools.exception.RespJson;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.AllArgsConstructor;
-import org.springdoc.api.annotations.ParameterObject;
+import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 

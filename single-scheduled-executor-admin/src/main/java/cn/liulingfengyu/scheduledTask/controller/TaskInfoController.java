@@ -1,12 +1,12 @@
 package cn.liulingfengyu.scheduledTask.controller;
 
+import cn.liulingfengyu.actuator.dto.TaskInfoPageDto;
+import cn.liulingfengyu.actuator.dto.TaskInsertDto;
+import cn.liulingfengyu.actuator.dto.TaskUpdateDto;
+import cn.liulingfengyu.actuator.service.IScheduledExecutorService;
+import cn.liulingfengyu.actuator.service.ITaskInfoService;
+import cn.liulingfengyu.actuator.vo.TaskInfoVo;
 import cn.liulingfengyu.mybatisplus.entity.PageInfo;
-import cn.liulingfengyu.scheduledTask.dto.TaskInfoPageDto;
-import cn.liulingfengyu.scheduledTask.dto.TaskInsertDto;
-import cn.liulingfengyu.scheduledTask.dto.TaskUpdateDto;
-import cn.liulingfengyu.scheduledTask.service.IScheduledExecutorService;
-import cn.liulingfengyu.scheduledTask.service.ITaskInfoService;
-import cn.liulingfengyu.scheduledTask.vo.TaskInfoVo;
 import cn.liulingfengyu.tools.CronUtils;
 import cn.liulingfengyu.tools.exception.ErrorCode;
 import cn.liulingfengyu.tools.exception.MyException;
@@ -16,7 +16,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.AllArgsConstructor;
-import org.springdoc.api.annotations.ParameterObject;
+import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 

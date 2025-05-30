@@ -1,9 +1,11 @@
 package cn.liulingfengyu.actuator.support;
 
+import cn.liulingfengyu.actuator.bo.CallbackBo;
 import cn.liulingfengyu.actuator.bo.TaskInfoBo;
 import cn.liulingfengyu.actuator.entity.TaskInfo;
 import cn.liulingfengyu.actuator.enums.IncidentEnum;
 import cn.liulingfengyu.actuator.service.ITaskInfoService;
+import cn.liulingfengyu.rabbitmq.bind.ActuatorBind;
 import cn.liulingfengyu.redis.constant.RedisConstant;
 import com.rabbitmq.client.Channel;
 import lombok.extern.slf4j.Slf4j;
@@ -11,7 +13,6 @@ import org.springframework.amqp.core.Message;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Primary;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Component;
@@ -34,9 +35,6 @@ public class MessageSubListener {
     @Autowired
     private MyScheduledExecutorService myScheduledExecutorService;
 
-    @Value("${actuator.name}")
-    private String actuatorName;
-
     @Autowired
     private ITaskInfoService taskInfoService;
 
@@ -56,20 +54,30 @@ public class MessageSubListener {
             IncidentEnum.REMOVE.getCode(), this::handleRemove
     );
 
-    @RabbitListener(queues = "${actuator.name}")
-    public void onMessage(TaskInfoBo taskInfoBo, Message message, Channel channel) throws IOException {
+    @RabbitListener(queues = ActuatorBind.ACTUATOR_QUEUE)
+    public void onMessage(CallbackBo callbackBo, Message message, Channel channel) throws IOException {
         long deliveryTag = message.getMessageProperties().getDeliveryTag();
-        String messageId = taskInfoBo.getId(); // 假设消息的唯一标识是 taskInfoBo 的 id
-
-        try {
-            // 检查消息是否已经被处理过
-            Boolean isProcessed = redisTemplate.opsForValue().setIfAbsent(RedisConstant.MESSAGE_IDEMPOTENT.concat(messageId), "1", 1, TimeUnit.HOURS);
-            if (Boolean.FALSE.equals(isProcessed)) {
-                log.warn("Message already processed: {}", messageId);
+        switch (callbackBo.getIncident()) {
+            case "START":
+            case "UPDATE":
+                if (redisTemplate.hasKey(RedisConstant.TASK_HEARTBEAT.concat(callbackBo.getTaskInfoBo().getId()))) {
+                    // @todo 启动任务
+                } else {
+                    // @todo 检查任务是否在当前机器上运行
+                    // @todo 修改任务
+                }
+                channel.basicAck(deliveryTag, false);
+                break;
+        }
+        if (!redisTemplate.hasKey(RedisConstant.TASK_HEARTBEAT.concat(callbackBo.getTaskInfoBo().getId()))) {
+            String redisKey = RedisConstant.CALLBACK_IDEMPOTENT.concat(callbackBo.getUuId());
+            if (Boolean.TRUE.equals(redisTemplate.opsForValue().setIfAbsent(redisKey, "1", 1, TimeUnit.DAYS))) {
                 channel.basicAck(deliveryTag, false);
                 return;
             }
 
+        }
+        try {
             if (actuatorName.equals(taskInfoBo.getAppName())) {
                 // 获取任务信息
                 TaskInfo taskInfo = getTaskInfo(taskInfoBo);

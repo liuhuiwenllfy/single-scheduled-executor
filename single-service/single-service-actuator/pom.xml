@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--suppress VulnerableLibrariesLocal -->
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <artifactId>single-service</artifactId>
+        <groupId>cn.liulingfengyu</groupId>
+        <version>1.0.0</version>
+    </parent>
+    <artifactId>single-service-actuator</artifactId>
+    <version>1.0.0</version>
+    <name>single-service-actuator</name>
+    <description>single-service-actuator</description>
+
+    <dependencies>
+        <dependency>
+            <groupId>cn.liulingfengyu</groupId>
+            <artifactId>single-model-actuator</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>cn.liulingfengyu</groupId>
+            <artifactId>single-common-redis</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>cn.liulingfengyu</groupId>
+            <artifactId>single-common-rabbitmq</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>cn.liulingfengyu</groupId>
+            <artifactId>single-common-tools</artifactId>
+        </dependency>
+    </dependencies>
+
+</project>

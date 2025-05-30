@@ -6,8 +6,8 @@ import cn.liulingfengyu.actuator.entity.TaskInfo;
 import cn.liulingfengyu.actuator.enums.IncidentEnum;
 import cn.liulingfengyu.actuator.service.ISchedulingLogService;
 import cn.liulingfengyu.actuator.service.ITaskInfoService;
+import cn.liulingfengyu.rabbitmq.bind.ActuatorBind;
 import cn.liulingfengyu.rabbitmq.bind.CallbackBind;
-import cn.liulingfengyu.rabbitmq.config.RabbitMQConfig;
 import cn.liulingfengyu.tools.CronUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
@@ -36,7 +36,7 @@ public class MyScheduledExecutorService {
     /**
      * 当前执行器执行中的任务，key->任务id，value->计划对象
      */
-    private final Map<String, ScheduledFuture<?>> map = new HashMap<>();
+    public final Map<String, ScheduledFuture<?>> map = new HashMap<>();
     /**
      * 计划执行程序服务
      */
@@ -50,9 +50,6 @@ public class MyScheduledExecutorService {
 
     @Autowired
     private ISchedulingLogService schedulingLogService;
-
-    @Value("${actuator.name}")
-    private String actuatorName;
 
     public MyScheduledExecutorService(@Value("${actuator.core-pool-size}") int corePoolSize) {
         //核心线程数
@@ -198,7 +195,7 @@ public class MyScheduledExecutorService {
         TaskInfoBo taskInfoBo = new TaskInfoBo();
         BeanUtils.copyProperties(currentTask, taskInfoBo);
         taskInfoBo.setIncident(IncidentEnum.UPDATE.getCode());
-        rabbitTemplate.convertAndSend(RabbitMQConfig.ACTUATOR_EXCHANGE_NAME, "", taskInfoBo, message -> {
+        rabbitTemplate.convertAndSend(ActuatorBind.ACTUATOR_EXCHANGE_NAME, "", taskInfoBo, message -> {
             message.getMessageProperties().setExpiration("60000"); // 设置消息过期时间为60秒
             return message;
         });

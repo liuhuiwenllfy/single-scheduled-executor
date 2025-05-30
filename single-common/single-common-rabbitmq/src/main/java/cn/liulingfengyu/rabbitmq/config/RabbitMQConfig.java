@@ -21,7 +21,4 @@ public class RabbitMQConfig {
         rabbitTemplate.setMessageConverter(messageConverter);
         return rabbitTemplate;
     }
-
-    public static final String ACTUATOR_EXCHANGE_NAME = "actuator_exchange";
-
 }

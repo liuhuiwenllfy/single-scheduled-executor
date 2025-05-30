@@ -13,6 +13,11 @@ public class CallbackBo {
     private String uuId;
 
     /**
+     * 回调类型
+     */
+    private String incident;
+
+    /**
      * 任务信息
      */
     private TaskInfoBo taskInfoBo;

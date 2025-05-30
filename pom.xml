@@ -23,18 +23,20 @@
     <modules>
         <module>single-common</module>
         <module>single-model</module>
+        <module>single-service</module>
         <module>single-scheduled-executor-actuator</module>
         <module>single-scheduled-executor-admin</module>
     </modules>
     <!--配置-->
     <properties>
-        <mybatis-plus-boot-starter.version>3.5.3.1</mybatis-plus-boot-starter.version>
-        <mybatis-plus-generator.version>3.5.3.1</mybatis-plus-generator.version>
-        <knife4j-openapi3-spring-boot-starter.version>4.4.0</knife4j-openapi3-spring-boot-starter.version>
+        <mybatis-plus-spring-boot3-starter.version>3.5.12</mybatis-plus-spring-boot3-starter.version>
+        <knife4j-openapi3-jakarta-spring-boot-starter.version>4.4.0
+        </knife4j-openapi3-jakarta-spring-boot-starter.version>
         <druid-spring-boot-starter.version>1.2.15</druid-spring-boot-starter.version>
-        <dynamic-datasource-spring-boot-starter.version>3.6.1</dynamic-datasource-spring-boot-starter.version>
+        <dynamic-datasource-spring-boot3-starter.version>4.3.1</dynamic-datasource-spring-boot3-starter.version>
         <single-common-bom.version>1.0.0</single-common-bom.version>
         <single-model-bom.version>1.0.0</single-model-bom.version>
+        <single-service-bom.version>1.0.0</single-service-bom.version>
         <cn.hutool-all.version>5.8.24</cn.hutool-all.version>
     </properties>
 
@@ -43,8 +45,13 @@
         <dependencies>
             <dependency>
                 <groupId>com.baomidou</groupId>
-                <artifactId>mybatis-plus-boot-starter</artifactId>
-                <version>${mybatis-plus-boot-starter.version}</version>
+                <artifactId>mybatis-plus-spring-boot3-starter</artifactId>
+                <version>${mybatis-plus-spring-boot3-starter.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.baomidou</groupId>
+                <artifactId>mybatis-plus-jsqlparser</artifactId>
+                <version>${mybatis-plus-spring-boot3-starter.version}</version>
             </dependency>
             <dependency>
                 <groupId>com.alibaba</groupId>
@@ -53,8 +60,8 @@
             </dependency>
             <dependency>
                 <groupId>com.baomidou</groupId>
-                <artifactId>dynamic-datasource-spring-boot-starter</artifactId>
-                <version>${dynamic-datasource-spring-boot-starter.version}</version>
+                <artifactId>dynamic-datasource-spring-boot3-starter</artifactId>
+                <version>${dynamic-datasource-spring-boot3-starter.version}</version>
             </dependency>
             <dependency>
                 <groupId>cn.hutool</groupId>
@@ -76,9 +83,16 @@
                 <scope>import</scope>
             </dependency>
             <dependency>
+                <groupId>cn.liulingfengyu</groupId>
+                <artifactId>single-service-bom</artifactId>
+                <version>${single-service-bom.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <dependency>
                 <groupId>com.github.xiaoymin</groupId>
-                <artifactId>knife4j-openapi3-spring-boot-starter</artifactId>
-                <version>${knife4j-openapi3-spring-boot-starter.version}</version>
+                <artifactId>knife4j-openapi3-jakarta-spring-boot-starter</artifactId>
+                <version>${knife4j-openapi3-jakarta-spring-boot-starter.version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>
