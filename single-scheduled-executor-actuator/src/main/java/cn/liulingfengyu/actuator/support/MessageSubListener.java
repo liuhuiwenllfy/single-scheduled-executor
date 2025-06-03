@@ -4,7 +4,6 @@ import cn.liulingfengyu.actuator.bo.CallbackBo;
 import cn.liulingfengyu.actuator.bo.TaskInfoBo;
 import cn.liulingfengyu.actuator.entity.TaskInfo;
 import cn.liulingfengyu.actuator.enums.IncidentEnum;
-import cn.liulingfengyu.actuator.service.ITaskInfoService;
 import cn.liulingfengyu.rabbitmq.bind.ActuatorBind;
 import cn.liulingfengyu.redis.constant.RedisConstant;
 import com.rabbitmq.client.Channel;
@@ -13,7 +12,6 @@ import org.springframework.amqp.core.Message;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Primary;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Component;
 
@@ -29,21 +27,17 @@ import java.util.concurrent.TimeUnit;
  */
 @Slf4j
 @Component
-@Primary
 public class MessageSubListener {
-
-    @Autowired
-    private MyScheduledExecutorService myScheduledExecutorService;
-
-    @Autowired
-    private ITaskInfoService taskInfoService;
 
     @Autowired
     private RedisTemplate<String, String> redisTemplate;
 
+    @Autowired
+    private MyScheduledExecutorService myScheduledExecutorService;
+
     // 策略接口
     private interface IncidentHandler {
-        void handle(TaskInfoBo taskInfoBo, TaskInfo taskInfo);
+        void handle(CallbackBo callbackBo);
     }
 
     // 策略实现类
@@ -57,40 +51,16 @@ public class MessageSubListener {
     @RabbitListener(queues = ActuatorBind.ACTUATOR_QUEUE)
     public void onMessage(CallbackBo callbackBo, Message message, Channel channel) throws IOException {
         long deliveryTag = message.getMessageProperties().getDeliveryTag();
-        switch (callbackBo.getIncident()) {
-            case "START":
-            case "UPDATE":
-                if (redisTemplate.hasKey(RedisConstant.TASK_HEARTBEAT.concat(callbackBo.getTaskInfoBo().getId()))) {
-                    // @todo 启动任务
-                } else {
-                    // @todo 检查任务是否在当前机器上运行
-                    // @todo 修改任务
-                }
-                channel.basicAck(deliveryTag, false);
-                break;
-        }
+        // 消息幂等处理
         if (!redisTemplate.hasKey(RedisConstant.TASK_HEARTBEAT.concat(callbackBo.getTaskInfoBo().getId()))) {
             String redisKey = RedisConstant.CALLBACK_IDEMPOTENT.concat(callbackBo.getUuId());
             if (Boolean.TRUE.equals(redisTemplate.opsForValue().setIfAbsent(redisKey, "1", 1, TimeUnit.DAYS))) {
                 channel.basicAck(deliveryTag, false);
                 return;
             }
-
         }
         try {
-            if (actuatorName.equals(taskInfoBo.getAppName())) {
-                // 获取任务信息
-                TaskInfo taskInfo = getTaskInfo(taskInfoBo);
-
-                // 根据事件类型调用对应的处理逻辑
-                String incidentCode = taskInfoBo.getIncident();
-                IncidentHandler handler = handlers.get(incidentCode);
-                if (handler != null) {
-                    handler.handle(taskInfoBo, taskInfo);
-                } else {
-                    log.warn("Unsupported incident type: {}", incidentCode);
-                }
-            }
+            handlers.get(callbackBo.getIncident()).handle(callbackBo);
             channel.basicAck(deliveryTag, false);
         } catch (Exception e) {
             log.error("Error processing message: {}", e.getMessage(), e);
@@ -106,23 +76,15 @@ public class MessageSubListener {
         return taskInfo;
     }
 
-    // 各事件类型的处理逻辑
-    private void handleStart(TaskInfoBo taskInfoBo, TaskInfo taskInfo) {
-        TaskInfo existingTask = taskInfoService.getById(taskInfoBo.getId());
-        if (existingTask == null || existingTask.isCancelled()) {
-            myScheduledExecutorService.startOnce(taskInfo, taskInfoBo.getIncident());
-        }
+    private void handleStart(CallbackBo callbackBo) {
     }
 
-    private void handleUpdate(TaskInfoBo taskInfoBo, TaskInfo taskInfo) {
-        myScheduledExecutorService.update(taskInfo);
+    private void handleUpdate(CallbackBo callbackBo) {
     }
 
-    private void handleStop(TaskInfoBo taskInfoBo, TaskInfo taskInfo) {
-        myScheduledExecutorService.stop(taskInfo, false);
+    private void handleStop(CallbackBo callbackBo) {
     }
 
-    private void handleRemove(TaskInfoBo taskInfoBo, TaskInfo taskInfo) {
-        myScheduledExecutorService.remove(taskInfo, true);
+    private void handleRemove(CallbackBo callbackBo) {
     }
 }
