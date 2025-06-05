@@ -45,9 +45,13 @@ public class TaskInfoBo {
      */
     private boolean done;
 
-
     /**
      * 消息类型
      */
     private String incident;
+
+    /**
+     * 是否强制停止
+     */
+    private boolean forcedStop;
 }

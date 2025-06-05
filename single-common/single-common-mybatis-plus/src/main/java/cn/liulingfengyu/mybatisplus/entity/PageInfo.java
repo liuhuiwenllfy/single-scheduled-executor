@@ -16,11 +16,11 @@ import lombok.Data;
 public class PageInfo {
 
     @Schema(description = "页码", requiredMode = Schema.RequiredMode.REQUIRED, allowableValues = {"1", "2", "3"})
-    @NotNull(message = "page.empty")
+    @NotNull(message = "页码不能为空")
     private Integer page;
 
     @Schema(description = "页大小", requiredMode = Schema.RequiredMode.REQUIRED, allowableValues = {"10", "20", "50"})
-    @NotNull(message = "pageSize.empty")
+    @NotNull(message = "页大小不能为空")
     private Integer pageSize;
 
     @Schema(description = "正序排序字段逗号拼接字符串（对应数据库字段）")

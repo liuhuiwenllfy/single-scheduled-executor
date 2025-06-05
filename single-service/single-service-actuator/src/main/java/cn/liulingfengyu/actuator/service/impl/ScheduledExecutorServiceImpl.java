@@ -5,8 +5,10 @@ import cn.liulingfengyu.actuator.bo.CallbackBo;
 import cn.liulingfengyu.actuator.bo.TaskInfoBo;
 import cn.liulingfengyu.actuator.dto.TaskInsertDto;
 import cn.liulingfengyu.actuator.dto.TaskUpdateDto;
+import cn.liulingfengyu.actuator.entity.TaskInfo;
 import cn.liulingfengyu.actuator.enums.IncidentEnum;
 import cn.liulingfengyu.actuator.service.IScheduledExecutorService;
+import cn.liulingfengyu.actuator.service.ITaskInfoService;
 import cn.liulingfengyu.rabbitmq.bind.ActuatorBind;
 import com.baomidou.dynamic.datasource.annotation.DS;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
@@ -26,6 +28,9 @@ public class ScheduledExecutorServiceImpl implements IScheduledExecutorService {
     @Autowired
     private RabbitTemplate rabbitTemplate;
 
+    @Autowired
+    private ITaskInfoService taskInfoService;
+
     @Override
     public void insertItem(TaskInsertDto taskInsertDto) {
         TaskInfoBo taskInfoBo = new TaskInfoBo();
@@ -38,7 +43,14 @@ public class ScheduledExecutorServiceImpl implements IScheduledExecutorService {
 
     @Override
     public void start(String id) {
+        TaskInfo taskInfo = taskInfoService.getById(id);
+        start(taskInfo);
+    }
+
+    @Override
+    public void start(TaskInfo taskInfo) {
         TaskInfoBo taskInfoBo = new TaskInfoBo();
+        BeanUtils.copyProperties(taskInfo, taskInfoBo);
         taskInfoBo.setIncident(IncidentEnum.START.getCode());
         taskInfoBo.setCancelled(false);
         taskInfoBo.setDone(false);

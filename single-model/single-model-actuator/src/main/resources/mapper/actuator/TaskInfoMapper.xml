@@ -19,7 +19,6 @@
         select id,
                code,
                title,
-               app_name,
                initial_delay,
                task_param,
                cancelled,

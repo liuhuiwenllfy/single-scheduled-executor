@@ -3,6 +3,7 @@ package cn.liulingfengyu.actuator.service;
 
 import cn.liulingfengyu.actuator.dto.TaskInsertDto;
 import cn.liulingfengyu.actuator.dto.TaskUpdateDto;
+import cn.liulingfengyu.actuator.entity.TaskInfo;
 
 /**
  * 任务管理接口
@@ -24,6 +25,13 @@ public interface IScheduledExecutorService {
      * @param id 入参
      */
     void start(String id);
+
+    /**
+     * 启动任务
+     *
+     * @param taskInfo 入参
+     */
+    void start(TaskInfo taskInfo);
 
     /**
      * 修改任务

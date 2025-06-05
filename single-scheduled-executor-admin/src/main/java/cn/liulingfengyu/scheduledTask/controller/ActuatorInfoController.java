@@ -45,15 +45,15 @@ public class ActuatorInfoController {
     /**
      * 批量删除执行器
      *
-     * @param idList 执行器ids
+     * @param actuatorNames 执行器名称
      * @return {@link RespJson}
      */
     @DeleteMapping("deleteBatchByIdList")
     @Operation(summary = "批量删除执行器")
     public RespJson<Boolean> deleteBatchByIdList(
             @Parameter(description = "执行器逗号字符串", required = true)
-            @RequestParam List<String> idList) {
-        return RespJson.state(actuatorInfoService.deleteBatchByIdList(idList));
+            @RequestParam List<String> actuatorNames) {
+        return RespJson.state(actuatorInfoService.deleteBatchByIdList(actuatorNames));
     }
 
 }

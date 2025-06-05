@@ -1,6 +1,5 @@
 package cn.liulingfengyu.actuator.service.impl;
 
-import cn.hutool.json.JSONUtil;
 import cn.liulingfengyu.actuator.dto.ActuatorInfoDto;
 import cn.liulingfengyu.actuator.service.IActuatorInfoService;
 import cn.liulingfengyu.actuator.vo.ActuatorInfoVo;
@@ -11,6 +10,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 /**
  * <p>
@@ -28,19 +28,23 @@ public class ActuatorInfoServiceImpl implements IActuatorInfoService {
 
     @Override
     public List<ActuatorInfoVo> getList(ActuatorInfoDto actuatorInfoDto) {
-        List<String> actuatorInfoList = JSONUtil.toList(JSONUtil.toJsonStr(redisUtil.hGetAll(RedisConstant.ACTUATOR_REGISTRY).values()), String.class);
+        Set<String> keys = redisUtil.keys(RedisConstant.ACTUATOR_REGISTRY.concat("*"));
         List<ActuatorInfoVo> list = new ArrayList<>();
-        actuatorInfoList.forEach(item -> {
+        keys.forEach(key -> {
+            String name = redisUtil.get(key);
             ActuatorInfoVo actuatorInfoVo = new ActuatorInfoVo();
-            actuatorInfoVo.setActuatorName(item);
-            actuatorInfoVo.setIsNormal(redisUtil.hasKey(RedisConstant.ACTUATOR_HEARTBEAT.concat(item)));
+            actuatorInfoVo.setActuatorName(name);
+            actuatorInfoVo.setNormal(redisUtil.hasKey(RedisConstant.ACTUATOR_HEARTBEAT.concat(name)));
             list.add(actuatorInfoVo);
         });
         return list;
     }
 
     @Override
-    public boolean deleteBatchByIdList(List<String> idList) {
-        return redisUtil.hDelete(RedisConstant.ACTUATOR_REGISTRY, idList.toArray(new Object[0])) > 0;
+    public boolean deleteBatchByIdList(List<String> actuatorNames) {
+        actuatorNames.forEach(actuatorName -> {
+            redisUtil.delete(RedisConstant.ACTUATOR_REGISTRY.concat(actuatorName));
+        });
+        return true;
     }
 }

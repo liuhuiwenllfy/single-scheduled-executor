@@ -26,9 +26,9 @@ public interface IActuatorInfoService {
     /**
      * 批量删除执行器
      *
-     * @param idList 执行器ids
+     * @param actuatorNames 执行器名称
      * @return boolean
      */
-    boolean deleteBatchByIdList(List<String> idList);
+    boolean deleteBatchByIdList(List<String> actuatorNames);
 
 }

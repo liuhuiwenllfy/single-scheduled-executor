@@ -19,5 +19,5 @@ public class ActuatorInfoVo {
      * 是否正常
      */
     @Schema(description = "是否正常")
-    private Boolean isNormal;
+    private boolean isNormal;
 }

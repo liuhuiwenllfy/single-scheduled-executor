@@ -10,7 +10,7 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.5.0</version>
+        <version>3.2.0</version>
         <relativePath/> <!-- lookup parent from repository -->
     </parent>
     <!--项目组ID，定义当前 Maven 项目隶属的组织或公司，通常是唯一的。它的取值一般是项目所属公司或组织的网址或 URL 的反写-->
@@ -30,7 +30,7 @@
     <!--配置-->
     <properties>
         <mybatis-plus-spring-boot3-starter.version>3.5.12</mybatis-plus-spring-boot3-starter.version>
-        <knife4j-openapi3-jakarta-spring-boot-starter.version>4.4.0
+        <knife4j-openapi3-jakarta-spring-boot-starter.version>4.5.0
         </knife4j-openapi3-jakarta-spring-boot-starter.version>
         <druid-spring-boot-starter.version>1.2.15</druid-spring-boot-starter.version>
         <dynamic-datasource-spring-boot3-starter.version>4.3.1</dynamic-datasource-spring-boot3-starter.version>

@@ -1,8 +1,8 @@
 package cn.liulingfengyu.actuator.support;
 
+import cn.hutool.core.util.StrUtil;
 import cn.liulingfengyu.actuator.bo.CallbackBo;
 import cn.liulingfengyu.actuator.bo.TaskInfoBo;
-import cn.liulingfengyu.actuator.entity.TaskInfo;
 import cn.liulingfengyu.actuator.enums.IncidentEnum;
 import cn.liulingfengyu.rabbitmq.bind.ActuatorBind;
 import cn.liulingfengyu.redis.constant.RedisConstant;
@@ -10,13 +10,12 @@ import com.rabbitmq.client.Channel;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.core.Message;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
-import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
-import java.util.Date;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
@@ -35,6 +34,9 @@ public class MessageSubListener {
     @Autowired
     private MyScheduledExecutorService myScheduledExecutorService;
 
+    @Value("${actuator.name}")
+    private String actuatorName;
+
     // 策略接口
     private interface IncidentHandler {
         void handle(CallbackBo callbackBo);
@@ -51,13 +53,17 @@ public class MessageSubListener {
     @RabbitListener(queues = ActuatorBind.ACTUATOR_QUEUE)
     public void onMessage(CallbackBo callbackBo, Message message, Channel channel) throws IOException {
         long deliveryTag = message.getMessageProperties().getDeliveryTag();
+        // 任务执行器不匹配
+        TaskInfoBo taskInfoBo = callbackBo.getTaskInfoBo();
+        if (StrUtil.isNotBlank(taskInfoBo.getAppName()) && !actuatorName.equals(taskInfoBo.getAppName())) {
+            channel.basicAck(deliveryTag, false);
+            return;
+        }
         // 消息幂等处理
-        if (!redisTemplate.hasKey(RedisConstant.TASK_HEARTBEAT.concat(callbackBo.getTaskInfoBo().getId()))) {
-            String redisKey = RedisConstant.CALLBACK_IDEMPOTENT.concat(callbackBo.getUuId());
-            if (Boolean.TRUE.equals(redisTemplate.opsForValue().setIfAbsent(redisKey, "1", 1, TimeUnit.DAYS))) {
-                channel.basicAck(deliveryTag, false);
-                return;
-            }
+        String redisKey = RedisConstant.CALLBACK_IDEMPOTENT.concat(callbackBo.getUuId());
+        if (Boolean.TRUE.equals(redisTemplate.opsForValue().setIfAbsent(redisKey, "1", 1, TimeUnit.DAYS))) {
+            channel.basicAck(deliveryTag, false);
+            return;
         }
         try {
             handlers.get(callbackBo.getIncident()).handle(callbackBo);
@@ -68,23 +74,19 @@ public class MessageSubListener {
         }
     }
 
-    // 提取公共方法：创建 TaskInfo 对象并拷贝属性
-    private TaskInfo getTaskInfo(TaskInfoBo taskInfoBo) {
-        TaskInfo taskInfo = new TaskInfo();
-        BeanUtils.copyProperties(taskInfoBo, taskInfo);
-        taskInfo.setCreateTime(new Date());
-        return taskInfo;
-    }
-
     private void handleStart(CallbackBo callbackBo) {
+        myScheduledExecutorService.startOnce(callbackBo);
     }
 
     private void handleUpdate(CallbackBo callbackBo) {
+        myScheduledExecutorService.update(callbackBo);
     }
 
     private void handleStop(CallbackBo callbackBo) {
+        myScheduledExecutorService.stop(callbackBo);
     }
 
     private void handleRemove(CallbackBo callbackBo) {
+        myScheduledExecutorService.remove(callbackBo);
     }
 }

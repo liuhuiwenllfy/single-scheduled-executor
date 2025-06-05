@@ -6,17 +6,22 @@ package cn.liulingfengyu.redis.constant;
 public class RedisConstant {
 
     /**
-     * 任务心跳
+     * 执行器心跳
      */
-    public static final String TASK_HEARTBEAT = "task_heartbeat:";
+    public static final String ACTUATOR_HEARTBEAT = "actuator_heartbeat:";
 
     /**
-     * 任务注册表
+     * 执行器注册表
      */
-    public static final String TASK_REGISTRY = "task_registry";
+    public static final String ACTUATOR_REGISTRY = "actuator_registry:";
 
     /**
      * 回调幂等id
      */
     public static final String CALLBACK_IDEMPOTENT = "callback_idempotent:";
+
+    /**
+     * 回调幂等id
+     */
+    public static final String MASTER_NODE = "master_node";
 }
