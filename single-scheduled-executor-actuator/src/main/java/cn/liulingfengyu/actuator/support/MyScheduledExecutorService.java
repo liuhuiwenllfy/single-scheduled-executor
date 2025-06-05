@@ -1,5 +1,6 @@
 package cn.liulingfengyu.actuator.support;
 
+import cn.hutool.core.lang.UUID;
 import cn.liulingfengyu.actuator.bo.CallbackBo;
 import cn.liulingfengyu.actuator.bo.TaskInfoBo;
 import cn.liulingfengyu.actuator.entity.TaskInfo;
@@ -230,16 +231,14 @@ public class MyScheduledExecutorService {
         TaskInfoBo taskInfoBo = new TaskInfoBo();
         BeanUtils.copyProperties(currentTask, taskInfoBo);
         taskInfoBo.setIncident(IncidentEnum.UPDATE.getCode());
-        rabbitTemplate.convertAndSend(ActuatorBind.ACTUATOR_EXCHANGE_NAME, "", taskInfoBo, message -> {
-            message.getMessageProperties().setExpiration("60000"); // 设置消息过期时间为60秒
-            return message;
-        });
+        rabbitTemplate.convertAndSend(ActuatorBind.ACTUATOR_EXCHANGE_NAME, ActuatorBind.ACTUATOR_ROUTING_KEY, taskInfoBo);
     }
 
     private void sendMessage(String incident, TaskInfo taskInfo, String errorMsg) {
         TaskInfoBo taskInfoBo = new TaskInfoBo();
         BeanUtils.copyProperties(taskInfo, taskInfoBo);
         CallbackBo callbackBo = new CallbackBo();
+        callbackBo.setUuId(UUID.randomUUID().toString(true));
         callbackBo.setIncident(incident);
         callbackBo.setTaskInfoBo(taskInfoBo);
         callbackBo.setErrorMsg(errorMsg);

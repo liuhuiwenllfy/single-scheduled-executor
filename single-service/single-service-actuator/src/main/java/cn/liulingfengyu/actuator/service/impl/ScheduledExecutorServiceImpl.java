@@ -37,8 +37,7 @@ public class ScheduledExecutorServiceImpl implements IScheduledExecutorService {
         BeanUtils.copyProperties(taskInsertDto, taskInfoBo);
         taskInfoBo.setId(UUID.randomUUID().toString(true));
         taskInfoBo.setCancelled(true);
-        taskInfoBo.setIncident(IncidentEnum.START.getCode());
-        sendMessage(taskInfoBo);
+        sendMessage(taskInfoBo, IncidentEnum.START.getCode());
     }
 
     @Override
@@ -51,40 +50,37 @@ public class ScheduledExecutorServiceImpl implements IScheduledExecutorService {
     public void start(TaskInfo taskInfo) {
         TaskInfoBo taskInfoBo = new TaskInfoBo();
         BeanUtils.copyProperties(taskInfo, taskInfoBo);
-        taskInfoBo.setIncident(IncidentEnum.START.getCode());
         taskInfoBo.setCancelled(false);
         taskInfoBo.setDone(false);
-        sendMessage(taskInfoBo);
+        sendMessage(taskInfoBo, IncidentEnum.START.getCode());
     }
 
     @Override
     public void updateItem(TaskUpdateDto taskUpdateDto) {
         TaskInfoBo taskInfoBo = new TaskInfoBo();
         BeanUtils.copyProperties(taskUpdateDto, taskInfoBo);
-        taskInfoBo.setIncident(IncidentEnum.UPDATE.getCode());
-        sendMessage(taskInfoBo);
+        sendMessage(taskInfoBo, IncidentEnum.UPDATE.getCode());
     }
 
     @Override
     public void stop(String taskId) {
         TaskInfoBo taskInfoBo = new TaskInfoBo();
         taskInfoBo.setId(taskId);
-        taskInfoBo.setIncident(IncidentEnum.STOP.getCode());
-        sendMessage(taskInfoBo);
+        sendMessage(taskInfoBo, IncidentEnum.STOP.getCode());
     }
 
     @Override
     public void remove(String taskId) {
         TaskInfoBo taskInfoBo = new TaskInfoBo();
         taskInfoBo.setId(taskId);
-        taskInfoBo.setIncident(IncidentEnum.REMOVE.getCode());
-        sendMessage(taskInfoBo);
+        sendMessage(taskInfoBo, IncidentEnum.REMOVE.getCode());
     }
 
-    private void sendMessage(TaskInfoBo taskInfoBo) {
+    private void sendMessage(TaskInfoBo taskInfoBo, String incident) {
         CallbackBo callbackBo = new CallbackBo();
         callbackBo.setUuId(UUID.randomUUID().toString(true));
         callbackBo.setTaskInfoBo(taskInfoBo);
-        rabbitTemplate.convertAndSend(ActuatorBind.ACTUATOR_EXCHANGE_NAME, "", callbackBo);
+        callbackBo.setIncident(incident);
+        rabbitTemplate.convertAndSend(ActuatorBind.ACTUATOR_EXCHANGE_NAME, ActuatorBind.ACTUATOR_ROUTING_KEY, callbackBo);
     }
 }

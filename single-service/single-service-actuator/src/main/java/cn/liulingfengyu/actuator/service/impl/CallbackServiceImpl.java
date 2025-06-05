@@ -40,7 +40,7 @@ public class CallbackServiceImpl {
         long deliveryTag = message.getMessageProperties().getDeliveryTag();
         // 消息幂等处理
         String redisKey = RedisConstant.CALLBACK_IDEMPOTENT.concat(callbackBo.getUuId());
-        if (Boolean.TRUE.equals(redisTemplate.opsForValue().setIfAbsent(redisKey, "1", 1, TimeUnit.DAYS))) {
+        if (Boolean.FALSE.equals(redisTemplate.opsForValue().setIfAbsent(redisKey, "1", 1, TimeUnit.DAYS))) {
             channel.basicAck(deliveryTag, false);
             return;
         }
