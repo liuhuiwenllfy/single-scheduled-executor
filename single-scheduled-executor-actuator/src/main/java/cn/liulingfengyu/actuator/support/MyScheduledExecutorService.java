@@ -5,11 +5,10 @@ import cn.liulingfengyu.actuator.bo.CallbackBo;
 import cn.liulingfengyu.actuator.bo.TaskInfoBo;
 import cn.liulingfengyu.actuator.entity.TaskInfo;
 import cn.liulingfengyu.actuator.enums.IncidentEnum;
-import cn.liulingfengyu.actuator.service.IScheduledExecutorService;
-import cn.liulingfengyu.actuator.service.ISchedulingLogService;
 import cn.liulingfengyu.actuator.service.ITaskInfoService;
 import cn.liulingfengyu.rabbitmq.bind.ActuatorBind;
 import cn.liulingfengyu.rabbitmq.bind.CallbackBind;
+import cn.liulingfengyu.rabbitmq.bind.SchedulingLogBind;
 import cn.liulingfengyu.redis.constant.RedisConstant;
 import cn.liulingfengyu.redis.utils.RedisUtil;
 import cn.liulingfengyu.tools.CronUtils;
@@ -54,17 +53,11 @@ public class MyScheduledExecutorService {
     @Autowired
     private ITaskInfoService taskInfoService;
 
-    @Autowired
-    private ISchedulingLogService schedulingLogService;
-
     @Value("${actuator.name}")
-    private String actuatorName;
+    public String actuatorName;
 
     @Autowired
     private RedisUtil redisUtil;
-
-    @Autowired
-    private IScheduledExecutorService scheduledExecutorService;
 
     public MyScheduledExecutorService(@Value("${actuator.core-pool-size}") int corePoolSize) {
         //核心线程数
@@ -76,25 +69,34 @@ public class MyScheduledExecutorService {
         redisUtil.set(RedisConstant.ACTUATOR_REGISTRY.concat(actuatorName), actuatorName);
         // 检查主节点是否存在，不存在则设置主节点，存在则更新主节点的过期时间
         if (!redisUtil.hasKey(RedisConstant.MASTER_NODE)) {
-            redisUtil.setIfAbsentEx(RedisConstant.MASTER_NODE, actuatorName, 30, TimeUnit.SECONDS);
-        } else {
-            redisUtil.expire(RedisConstant.MASTER_NODE, 30, TimeUnit.SECONDS);
+            redisUtil.setIfAbsentEx(RedisConstant.MASTER_NODE, actuatorName, 15, TimeUnit.SECONDS);
+        } else if (actuatorName.equals(redisUtil.get(RedisConstant.MASTER_NODE))) {
+            redisUtil.expire(RedisConstant.MASTER_NODE, 15, TimeUnit.SECONDS);
         }
         // 执行器心跳
-        redisUtil.setEx(RedisConstant.ACTUATOR_HEARTBEAT.concat(actuatorName), actuatorName, 30, TimeUnit.SECONDS);
+        redisUtil.setEx(RedisConstant.ACTUATOR_HEARTBEAT.concat(actuatorName), actuatorName, 15, TimeUnit.SECONDS);
         if (redisUtil.get(RedisConstant.MASTER_NODE).equals(actuatorName)) {
             Set<String> keys = redisUtil.keys(RedisConstant.ACTUATOR_REGISTRY.concat("*"));
             keys.forEach(key -> {
                 String name = redisUtil.get(key);
                 Boolean survive = redisUtil.hasKey(RedisConstant.ACTUATOR_HEARTBEAT.concat(name));
                 if (!survive) {
-                    //  故障转移
-                    List<TaskInfo> restartList = taskInfoService.getRestartList(name);
-                    for (TaskInfo taskInfo : restartList) {
-                        scheduledExecutorService.start(taskInfo);
+                    log.info("执行器->{}故障，任务转移", name);
+                    restartTask(name);
+                    if (!actuatorName.equals(name)) {
+                        redisUtil.delete(key);
                     }
                 }
             });
+        }
+    }
+
+    public void restartTask(String name) {
+        List<TaskInfo> restartList = taskInfoService.getRestartList(name);
+        if (!restartList.isEmpty()) {
+            for (TaskInfo taskInfo : restartList) {
+                taskInfoService.start(taskInfo);
+            }
         }
     }
 
@@ -132,7 +134,7 @@ public class MyScheduledExecutorService {
                                 taskInfoService.updateById(currentTask);
                             }
                             //保存执行日志
-                            schedulingLogService.insertItem(currentTask);
+                            keepLog(currentTask);
                             //推送执行消息
                             log.info("执行任务id->{}", currentTask.getId());
                             sendMessage(IncidentEnum.CARRY_OUT.getCode(), currentTask, "执行成功");
@@ -227,21 +229,28 @@ public class MyScheduledExecutorService {
     }
 
     public void startTheNextTask(TaskInfo currentTask) {
-        //再次启动任务
-        TaskInfoBo taskInfoBo = new TaskInfoBo();
-        BeanUtils.copyProperties(currentTask, taskInfoBo);
-        taskInfoBo.setIncident(IncidentEnum.UPDATE.getCode());
-        rabbitTemplate.convertAndSend(ActuatorBind.ACTUATOR_EXCHANGE_NAME, ActuatorBind.ACTUATOR_ROUTING_KEY, taskInfoBo);
+        CallbackBo callbackBo = getCallbackBo(currentTask, IncidentEnum.CYCLE_START.getCode());
+        rabbitTemplate.convertAndSend(ActuatorBind.ACTUATOR_EXCHANGE_NAME, ActuatorBind.ACTUATOR_ROUTING_KEY, callbackBo);
+    }
+
+    public void keepLog(TaskInfo currentTask) {
+        CallbackBo callbackBo = getCallbackBo(currentTask, IncidentEnum.CYCLE_START.getCode());
+        rabbitTemplate.convertAndSend(SchedulingLogBind.SCHEDULING_LOG_EXCHANGE_NAME, SchedulingLogBind.SCHEDULING_LOG_ROUTING_KEY, callbackBo);
     }
 
     private void sendMessage(String incident, TaskInfo taskInfo, String errorMsg) {
-        TaskInfoBo taskInfoBo = new TaskInfoBo();
-        BeanUtils.copyProperties(taskInfo, taskInfoBo);
-        CallbackBo callbackBo = new CallbackBo();
-        callbackBo.setUuId(UUID.randomUUID().toString(true));
-        callbackBo.setIncident(incident);
-        callbackBo.setTaskInfoBo(taskInfoBo);
+        CallbackBo callbackBo = getCallbackBo(taskInfo, incident);
         callbackBo.setErrorMsg(errorMsg);
         rabbitTemplate.convertAndSend(CallbackBind.CALLBACK_EXCHANGE_NAME, CallbackBind.CALLBACK_ROUTING_KEY, callbackBo);
+    }
+
+    private static CallbackBo getCallbackBo(TaskInfo currentTask, String CYCLE_START) {
+        TaskInfoBo taskInfoBo = new TaskInfoBo();
+        BeanUtils.copyProperties(currentTask, taskInfoBo);
+        CallbackBo callbackBo = new CallbackBo();
+        callbackBo.setUuId(UUID.randomUUID().toString(true));
+        callbackBo.setIncident(CYCLE_START);
+        callbackBo.setTaskInfoBo(taskInfoBo);
+        return callbackBo;
     }
 }

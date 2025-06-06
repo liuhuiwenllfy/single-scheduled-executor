@@ -23,7 +23,6 @@
     <modules>
         <module>single-common</module>
         <module>single-model</module>
-        <module>single-service</module>
         <module>single-scheduled-executor-actuator</module>
         <module>single-scheduled-executor-admin</module>
     </modules>
@@ -79,13 +78,6 @@
                 <groupId>cn.liulingfengyu</groupId>
                 <artifactId>single-model-bom</artifactId>
                 <version>${single-model-bom.version}</version>
-                <type>pom</type>
-                <scope>import</scope>
-            </dependency>
-            <dependency>
-                <groupId>cn.liulingfengyu</groupId>
-                <artifactId>single-service-bom</artifactId>
-                <version>${single-service-bom.version}</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>

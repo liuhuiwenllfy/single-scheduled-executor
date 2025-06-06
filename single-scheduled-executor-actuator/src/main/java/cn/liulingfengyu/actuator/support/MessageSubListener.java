@@ -6,13 +6,13 @@ import cn.liulingfengyu.actuator.bo.TaskInfoBo;
 import cn.liulingfengyu.actuator.enums.IncidentEnum;
 import cn.liulingfengyu.rabbitmq.bind.ActuatorBind;
 import cn.liulingfengyu.redis.constant.RedisConstant;
+import cn.liulingfengyu.redis.utils.RedisUtil;
 import com.rabbitmq.client.Channel;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.core.Message;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
@@ -29,7 +29,7 @@ import java.util.concurrent.TimeUnit;
 public class MessageSubListener {
 
     @Autowired
-    private RedisTemplate<String, String> redisTemplate;
+    private RedisUtil redisUtil;
 
     @Autowired
     private MyScheduledExecutorService myScheduledExecutorService;
@@ -45,6 +45,7 @@ public class MessageSubListener {
     // 策略实现类
     private final Map<String, IncidentHandler> handlers = Map.of(
             IncidentEnum.START.getCode(), this::handleStart,
+            IncidentEnum.CYCLE_START.getCode(), this::handleUpdate,
             IncidentEnum.UPDATE.getCode(), this::handleUpdate,
             IncidentEnum.STOP.getCode(), this::handleStop,
             IncidentEnum.REMOVE.getCode(), this::handleRemove
@@ -61,7 +62,7 @@ public class MessageSubListener {
         }
         // 消息幂等处理
         String redisKey = RedisConstant.CALLBACK_IDEMPOTENT.concat(callbackBo.getUuId());
-        if (Boolean.FALSE.equals(redisTemplate.opsForValue().setIfAbsent(redisKey, "1", 1, TimeUnit.DAYS))) {
+        if (Boolean.FALSE.equals(redisUtil.setIfAbsentEx(redisKey, "1", 1, TimeUnit.DAYS))) {
             channel.basicAck(deliveryTag, false);
             return;
         }

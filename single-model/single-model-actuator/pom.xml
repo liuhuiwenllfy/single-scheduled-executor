@@ -14,11 +14,7 @@
     <description>single-model-actuator</description>
 
     <dependencies>
-        <!--mybatis-plus-->
-        <dependency>
-            <groupId>cn.liulingfengyu</groupId>
-            <artifactId>single-common-mybatis-plus</artifactId>
-        </dependency>
+
     </dependencies>
 
 </project>

@@ -44,3 +44,14 @@ logging:
     cn.liulingfengyu.actuator: debug
   file:
     path: log
+# swagger配置
+knife4j:
+  enable: true  #是否开启Knife4j增强模式
+  setting:
+    enable-after-script: false
+    enable-swagger-models: false
+    enable-home-custom: true
+    home-custom-path: classpath:markdown/home.md
+    enable-footer-custom: true
+    footer-custom-content: Copyright © 2023 刘凌枫羽工作室所有
+    enable-open-api: false

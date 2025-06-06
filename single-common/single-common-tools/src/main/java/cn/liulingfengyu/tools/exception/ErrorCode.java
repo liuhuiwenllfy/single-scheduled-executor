@@ -14,7 +14,9 @@ public enum ErrorCode {
 
     ERROR(500, "程序异常，请联系管理"),
 
-    CRON_ERROR(60050, "cron格式错误"),
+    CRON_ERROR(60001, "cron格式错误"),
+
+    TASK_NOT_EXIST(60002, "任务不存在"),
     ;
 
     private final int code;

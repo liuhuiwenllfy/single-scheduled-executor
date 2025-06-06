@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.liulingfengyu.actuator.mapper.TaskInfoMapper">
+
+    <!-- 通用查询映射结果 -->
+    <resultMap id="BaseResultMap" type="cn.liulingfengyu.actuator.entity.TaskInfo">
+        <id column="id" property="id"/>
+        <result column="title" property="title"/>
+        <result column="task_param" property="taskParam"/>
+        <result column="cancelled" property="cancelled"/>
+        <result column="done" property="done"/>
+        <result column="next_execution_time" property="nextExecutionTime"/>
+        <result column="create_time" property="createTime"/>
+        <result column="cron" property="cron"/>
+    </resultMap>
+    <select id="getRestartList"
+            resultType="cn.liulingfengyu.actuator.entity.TaskInfo">
+        select id,
+               code,
+               title,
+               initial_delay,
+               task_param,
+               cancelled,
+               done,
+               next_execution_time,
+               create_time,
+               tenant_id,
+               cron
+        from s_task_info
+        where cancelled = false
+          and app_name = #{actuatorName}
+    </select>
+    <select id="getByPage" resultType="cn.liulingfengyu.actuator.vo.TaskInfoVo">
+        select
+        id,
+        code,
+        title,
+        app_name,
+        task_param,
+        cancelled,
+        done,
+        next_execution_time,
+        DATE_FORMAT(create_time, '%Y-%m-%d %H:%i:%s') as create_time,
+        cron
+        from s_task_info where 1=1
+        <if test="taskInfoPageDto.title != null and taskInfoPageDto.title != ''">
+            and title like concat('%',#{taskInfoPageDto.title},'%')
+        </if>
+    </select>
+    <select id="queryById" resultType="cn.liulingfengyu.actuator.vo.TaskInfoVo">
+        select id,
+               code,
+               title,
+               app_name,
+               task_param,
+               cancelled,
+               done,
+               next_execution_time,
+               DATE_FORMAT(create_time, '%Y-%m-%d %H:%i:%s') as create_time,
+               cron
+        from s_task_info
+        where id = #{id}
+    </select>
+</mapper>
