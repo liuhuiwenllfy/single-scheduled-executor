@@ -12,27 +12,23 @@
         <result column="response_result" property="responseResult"/>
         <result column="create_time" property="createTime"/>
     </resultMap>
-    <delete id="deleteThirtyDaysAgoActuatorLogs">
-        delete
-        from s_scheduling_log
-        where create_time &lt; DATE_SUB(NOW(), INTERVAL 30 DAY)
-    </delete>
     <select id="getByPage" resultType="cn.liulingfengyu.actuator.vo.SchedulingLogVo">
-        select id, task_id, app_name, task_param, done, response_result, DATE_FORMAT(create_time, '%Y-%m-%d %H:%i:%s')
+        select sti.title as taskName, sslg.app_name, sslg.task_param, sslg.response_result, DATE_FORMAT(sslg.create_time, '%Y-%m-%d %H:%i:%s')
         as create_time
-        from s_scheduling_log
+        from s_scheduling_log sslg
+        left join s_task_info sti on sslg.task_id = sti.id
         where 1=1
-        <if test="schedulingLogDto.appName != null and schedulingLogDto.appName != ''">
-            and app_name = #{schedulingLogDto.appName}
+        <if test="schedulingLogDto.taskName != null and schedulingLogDto.taskName != ''">
+            and sti.title = #{schedulingLogDto.taskName}
         </if>
-        <if test="schedulingLogDto.done != null">
-            and done = #{schedulingLogDto.done}
+        <if test="schedulingLogDto.appName != null and schedulingLogDto.appName != ''">
+            and sslg.app_name = #{schedulingLogDto.appName}
         </if>
         <if test="schedulingLogDto.startCreateTime != null and schedulingLogDto.startCreateTime != ''">
-            and create_time &gt;= #{schedulingLogDto.startCreateTime}
+            and sslg.create_time &gt;= #{schedulingLogDto.startCreateTime}
         </if>
         <if test="schedulingLogDto.endCreateTime != null and schedulingLogDto.endCreateTime != ''">
-            and create_time &lt;= #{schedulingLogDto.endCreateTime}
+            and sslg.create_time &lt;= #{schedulingLogDto.endCreateTime}
         </if>
     </select>
 

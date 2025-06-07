@@ -13,11 +13,12 @@ public class SchedulingLogDto {
      */
     @Schema(description = "执行器名称")
     private String appName;
+
     /**
-     * 完成状态
+     * 标题
      */
-    @Schema(description = "完成状态")
-    private Boolean done;
+    @Schema(description = "标题")
+    private String taskName;
     /**
      * 开始时间
      */

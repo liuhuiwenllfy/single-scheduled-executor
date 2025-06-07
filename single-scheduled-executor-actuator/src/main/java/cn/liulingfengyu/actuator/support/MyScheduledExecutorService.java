@@ -123,8 +123,8 @@ public class MyScheduledExecutorService {
                         TaskInfo currentTask = taskInfoService.getById(taskInfo.getId());
                         if (currentTask != null) {
                             //获取下一执行时间（验证是否需要再次执行）
-                            long nextTimeDelayMilliseconds = CronUtils.getNextTimeDelayMilliseconds(currentTask.getCron());
-                            if (nextTimeDelayMilliseconds != -1) {
+                            boolean expired = CronUtils.isExpired(currentTask.getCron());
+                            if (!expired) {
                                 startTheNextTask(currentTask);
                             } else {
                                 //任务已过期或完成

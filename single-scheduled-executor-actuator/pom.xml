@@ -16,6 +16,10 @@
     <dependencies>
         <dependency>
             <groupId>cn.liulingfengyu</groupId>
+            <artifactId>single-common-mybatis-plus</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>cn.liulingfengyu</groupId>
             <artifactId>single-model-actuator</artifactId>
         </dependency>
         <dependency>

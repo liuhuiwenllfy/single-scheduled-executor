@@ -14,6 +14,12 @@ public class SchedulingLogVo {
      */
     @Schema(description = "主键")
     private String id;
+
+    /**
+     * 标题
+     */
+    @Schema(description = "标题")
+    private String taskName;
     /**
      * 任务id
      */
