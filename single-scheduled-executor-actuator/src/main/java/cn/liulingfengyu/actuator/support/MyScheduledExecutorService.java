@@ -108,10 +108,9 @@ public class MyScheduledExecutorService {
     public void startOnce(CallbackBo callbackBo) {
         TaskInfo taskInfo = new TaskInfo();
         BeanUtils.copyProperties(callbackBo.getTaskInfoBo(), taskInfo);
-        // 延迟时间
-        long initialDelay = CronUtils.getNextTimeDelayMilliseconds(taskInfo.getCron());
-        // 验证延迟时间是否过期
-        if (initialDelay != -1) {
+        if (!CronUtils.isExpired(taskInfo.getCron())) {
+            // 延迟时间
+            long initialDelay = CronUtils.getNextTimeDelayMilliseconds(taskInfo.getCron());
             // 更新数据库状态
             taskInfo.setNextExecutionTime(System.currentTimeMillis() + initialDelay);
             taskInfo.setCancelled(false);
@@ -123,8 +122,7 @@ public class MyScheduledExecutorService {
                         TaskInfo currentTask = taskInfoService.getById(taskInfo.getId());
                         if (currentTask != null) {
                             //获取下一执行时间（验证是否需要再次执行）
-                            boolean expired = CronUtils.isExpired(currentTask.getCron());
-                            if (!expired) {
+                            if (!CronUtils.isExpired(currentTask.getCron())) {
                                 startTheNextTask(currentTask);
                             } else {
                                 //任务已过期或完成
@@ -149,8 +147,8 @@ public class MyScheduledExecutorService {
                 sendMessage(IncidentEnum.UPDATE.getCode(), taskInfo, "修改成功");
             }
         } else {
-            log.error("任务->{}执行失败，cron时间格式错误->{}", taskInfo.getId(), taskInfo.getCron());
-            sendMessage(IncidentEnum.ERROR.getCode(), taskInfo, "任务执行失败，cron时间格式错误");
+            log.error("任务->{}执行失败，cron时间格式错误或已过期->{}", taskInfo.getId(), taskInfo.getCron());
+            sendMessage(IncidentEnum.ERROR.getCode(), taskInfo, "任务执行失败，cron时间格式错误或已过期");
         }
 
     }
