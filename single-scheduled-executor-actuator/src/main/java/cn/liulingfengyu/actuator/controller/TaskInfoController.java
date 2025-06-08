@@ -68,7 +68,7 @@ public class TaskInfoController {
     @PostMapping("insert")
     @Operation(summary = "创建任务")
     public RespJson<Boolean> insertItem(@Validated @RequestBody TaskInsertDto taskInsertDto) {
-        if (CronUtils.isValidCron(taskInsertDto.getCron())) {
+        if (!CronUtils.isValidCron(taskInsertDto.getCron())) {
             throw new MyException(ErrorCode.CRON_ERROR);
         }
         if (CronUtils.isExpired(taskInsertDto.getCron())) {
@@ -98,7 +98,7 @@ public class TaskInfoController {
     @PutMapping("updateById")
     @Operation(summary = "修改任务")
     public RespJson<Boolean> updateItem(@Validated @RequestBody TaskUpdateDto taskUpdateDto) {
-        if (CronUtils.isValidCron(taskUpdateDto.getCron())) {
+        if (!CronUtils.isValidCron(taskUpdateDto.getCron())) {
             throw new MyException(ErrorCode.CRON_ERROR);
         }
         if (CronUtils.isExpired(taskUpdateDto.getCron())) {

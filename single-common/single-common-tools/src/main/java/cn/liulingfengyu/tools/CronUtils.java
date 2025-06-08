@@ -160,8 +160,4 @@ public class CronUtils {
             return true;
         }
     }
-
-    public static void main(String[] args) {
-        System.out.println(getNextTimeDelayMilliseconds("59 59 23 31 12 ? 2024-2025"));
-    }
 }
