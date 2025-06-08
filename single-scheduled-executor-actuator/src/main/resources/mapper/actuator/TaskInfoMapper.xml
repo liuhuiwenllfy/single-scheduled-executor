@@ -24,7 +24,6 @@
                done,
                next_execution_time,
                create_time,
-               tenant_id,
                cron
         from s_task_info
         where cancelled = false

@@ -16,7 +16,9 @@ public enum ErrorCode {
 
     CRON_ERROR(60001, "cron格式错误"),
 
-    TASK_NOT_EXIST(60002, "任务不存在"),
+    CRON_EXPIRED(60002, "cron已过期"),
+
+    TASK_NOT_EXIST(60003, "任务不存在"),
     ;
 
     private final int code;

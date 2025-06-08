@@ -11,29 +11,37 @@ public class CronUtils {
     /**
      * 获取下一个执行延迟时间
      *
-     * @param cron 时间
+     * @param cron 时间表达式
      * @return 返回当前时间到执行时间之间的毫秒数，如果返回-1则表示时间过期或者不合法
      */
     public static long getNextTimeDelayMilliseconds(String cron) {
+        // 校验 cron 表达式是否合法
+        if (!isValidCron(cron)) {
+            return -1;
+        }
+        // 校验 cron 表达式是否已过期
+        if (isExpired(cron)) {
+            return -1;
+        }
         try {
-            //获取字符串长度
+            // 获取字符串长度
             String[] split = cron.split(" ");
             int lastIndex = -1;
             if (split.length == 7) {
-                //获取最后一个空格下标
+                // 获取最后一个空格下标
                 lastIndex = cron.lastIndexOf(' ');
-                //验证年份格式是否合法
+                // 验证年份格式是否合法
                 // 正则表达式，匹配只包含数字、星号、斜杠、减号和逗号的字符串
                 String pattern = "^[0-9*,/-]+$";
                 if (!Pattern.matches(pattern, cron.substring(lastIndex + 1))) {
                     return -1;
                 }
             }
-            //获取下一执行时间
+            // 获取下一执行时间
             LocalDateTime now = LocalDateTime.now();
             CronExpression cronSequence = CronExpression.parse(lastIndex == -1 ? cron : cron.substring(0, lastIndex));
             LocalDateTime nextTime = cronSequence.next(now);
-            //获取延迟毫秒数
+            // 获取延迟毫秒数
             Duration nowToNextTimeduration = Duration.between(now, nextTime);
             return nowToNextTimeduration.toMillis();
         } catch (Exception e) {
@@ -42,29 +50,118 @@ public class CronUtils {
     }
 
     /**
-     * 验证cron是否过期
+     * 校验 cron 表达式是否合法
      *
-     * @param cron 时间
-     * @return 返回过期状态值 false-未过期；true-已过过期
+     * @param cron cron 表达式
+     * @return true - 合法；false - 不合法
+     */
+    public static boolean isValidCron(String cron) {
+        if (cron == null || cron.trim().isEmpty()) {
+            return false;
+        }
+
+        String[] split = cron.trim().split("\\s+");
+        int length = split.length;
+
+        // 只接受 6 位或 7 位表达式
+        if (length != 6 && length != 7) {
+            return false;
+        }
+
+        // 如果是 7 位，单独处理年份字段
+        if (length == 7) {
+            String yearField = split[6].trim();
+            if (isValidYearField(yearField)) {
+                return false;
+            }
+            // 去掉年份部分，使用前6位进行标准校验
+            cron = cron.substring(0, cron.lastIndexOf(' ')).trim();
+        }
+
+        return CronExpression.isValidExpression(cron);
+    }
+
+    /**
+     * 校验年份字段是否合法
+     * 支持格式：
+     * - 单个年份（如 "2025"）
+     * - 通配符（如 "*"）
+     * - 范围（如 "2020-2025"）
+     * - 列表（如 "2020,2021,2022"）
+     *
+     * @param yearField 年份字段字符串
+     * @return true - 合法；false - 不合法
+     */
+    private static boolean isValidYearField(String yearField) {
+        if (yearField.equals("*")) {
+            return false;
+        }
+
+        // 正则匹配：数字、逗号、短横线
+        return !yearField.matches("^(\\d{4})(,(\\d{4}))*$") &&
+                !yearField.matches("^\\d{4}-\\d{4}$");
+    }
+
+    /**
+     * 验证 cron 是否过期
+     *
+     * @param cron 时间表达式
+     * @return 返回过期状态值 false-未过期；true-已过期
      */
     public static boolean isExpired(String cron) {
-        String[] split = cron.split(" ");
-        if (split.length == 7) {
-            //验证当前任务是否在年份范围内
-            LocalDateTime now = LocalDateTime.now();
-            int year = now.getYear();
-            if (split[6].contains("-")) {
-                String[] yearSection = split[6].split("-");
-                if (yearSection.length == 2) {
-                    return Integer.parseInt(yearSection[0]) >= year || Integer.parseInt(yearSection[1]) <= year;
-                }
-            } else if (split[6].equals("*")) {
-                return false;
-            } else {
-                return split[6].contains(String.valueOf(year));
+        if (cron == null || cron.trim().isEmpty()) {
+            return true;
+        }
+
+        String[] split = cron.trim().split("\\s+");
+        int length = split.length;
+
+        // 只接受 6 位或 7 位表达式
+        if (length != 6 && length != 7) {
+            return true;
+        }
+
+        LocalDateTime now = LocalDateTime.now();
+
+        // 处理 7 位带年份的 cron
+        if (length == 7) {
+            String yearField = split[6].trim();
+            if (isValidYearField(yearField)) {
+                return true; // 年份字段非法视为过期
             }
 
+            // 检查年份是否已过期
+            if (yearField.contains("-")) {
+                String[] range = yearField.split("-");
+                int start = Integer.parseInt(range[0]);
+                int end = Integer.parseInt(range[1]);
+                if (start > end){
+                    return false;
+                }
+                if (now.getYear() > end) {
+                    return true; // 超出年份范围，视为过期
+                }
+            } else if (yearField.matches("\\d{4}")) {
+                int year = Integer.parseInt(yearField);
+                if (now.getYear() > year) {
+                    return true; // 单个年份已过
+                }
+            }
+
+            // 去掉年份部分，使用前6位进行时间判断
+            cron = cron.substring(0, cron.lastIndexOf(' ')).trim();
         }
-        return false;
+
+        try {
+            CronExpression cronExp = CronExpression.parse(cron);
+            LocalDateTime nextTime = cronExp.next(now);
+            return nextTime == null;
+        } catch (Exception e) {
+            return true;
+        }
+    }
+
+    public static void main(String[] args) {
+        System.out.println(getNextTimeDelayMilliseconds("59 59 23 31 12 ? 2024-2025"));
     }
 }
