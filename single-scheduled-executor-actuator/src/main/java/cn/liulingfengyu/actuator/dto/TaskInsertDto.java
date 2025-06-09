@@ -15,22 +15,23 @@ public class TaskInsertDto {
      * 代码
      */
     @Schema(description = "代码")
-    @NotBlank(message = "code.empty")
-    @Size(min = 1, max = 90, message = "code.length")
+    @NotBlank(message = "代码不能为空")
+    @Size(min = 1, max = 90, message = "代码长度在1~90字符之间")
     private String code;
 
     /**
      * 标题
      */
     @Schema(description = "标题")
-    @NotBlank(message = "title.empty")
-    @Size(min = 1, max = 90, message = "title.length")
+    @NotBlank(message = "标题不能为空")
+    @Size(min = 1, max = 90, message = "标题长度在1~90字符之间")
     private String title;
 
     /**
      * cron
      */
     @Schema(description = "cron")
+    @NotBlank(message = "cron不能为空")
     private String cron;
 
     /**
