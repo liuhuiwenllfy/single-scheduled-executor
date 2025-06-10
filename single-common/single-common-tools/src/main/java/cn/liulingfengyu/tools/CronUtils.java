@@ -4,7 +4,6 @@ import org.springframework.scheduling.support.CronExpression;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
-import java.util.regex.Pattern;
 
 public class CronUtils {
 
@@ -15,31 +14,14 @@ public class CronUtils {
      * @return 返回当前时间到执行时间之间的毫秒数，如果返回-1则表示时间过期或者不合法
      */
     public static long getNextTimeDelayMilliseconds(String cron) {
-        // 校验 cron 表达式是否合法
-        if (!isValidCron(cron)) {
-            return -1;
-        }
-        // 校验 cron 表达式是否已过期
+        // 校验 cron
         if (isExpired(cron)) {
             return -1;
         }
         try {
-            // 获取字符串长度
-            String[] split = cron.split(" ");
-            int lastIndex = -1;
-            if (split.length == 7) {
-                // 获取最后一个空格下标
-                lastIndex = cron.lastIndexOf(' ');
-                // 验证年份格式是否合法
-                // 正则表达式，匹配只包含数字、星号、斜杠、减号和逗号的字符串
-                String pattern = "^[0-9*,/-]+$";
-                if (!Pattern.matches(pattern, cron.substring(lastIndex + 1))) {
-                    return -1;
-                }
-            }
             // 获取下一执行时间
             LocalDateTime now = LocalDateTime.now();
-            CronExpression cronSequence = CronExpression.parse(lastIndex == -1 ? cron : cron.substring(0, lastIndex));
+            CronExpression cronSequence = CronExpression.parse(cron.substring(0, cron.lastIndexOf(' ')).trim());
             LocalDateTime nextTime = cronSequence.next(now);
             // 获取延迟毫秒数
             Duration nowToNextTimeduration = Duration.between(now, nextTime);
@@ -109,53 +91,50 @@ public class CronUtils {
      * @return 返回过期状态值 false-未过期；true-已过期
      */
     public static boolean isExpired(String cron) {
-        if (cron == null || cron.trim().isEmpty()) {
+        // 校验 cron
+        if (!isValidCron(cron)) {
             return true;
         }
-
         String[] split = cron.trim().split("\\s+");
         int length = split.length;
-
-        // 只接受 6 位或 7 位表达式
-        if (length != 6 && length != 7) {
-            return true;
-        }
-
         LocalDateTime now = LocalDateTime.now();
 
-        // 处理 7 位带年份的 cron
-        if (length == 7) {
-            String yearField = split[6].trim();
-            if (isValidYearField(yearField)) {
-                return true; // 年份字段非法视为过期
-            }
-
-            // 检查年份是否已过期
-            if (yearField.contains("-")) {
-                String[] range = yearField.split("-");
-                int start = Integer.parseInt(range[0]);
-                int end = Integer.parseInt(range[1]);
-                if (start > end){
-                    return false;
-                }
-                if (now.getYear() > end) {
-                    return true; // 超出年份范围，视为过期
-                }
-            } else if (yearField.matches("\\d{4}")) {
-                int year = Integer.parseInt(yearField);
-                if (now.getYear() > year) {
-                    return true; // 单个年份已过
-                }
-            }
-
-            // 去掉年份部分，使用前6位进行时间判断
-            cron = cron.substring(0, cron.lastIndexOf(' ')).trim();
-        }
-
         try {
-            CronExpression cronExp = CronExpression.parse(cron);
+            //  获取下一次执行时间
+            CronExpression cronExp = CronExpression.parse(cron.substring(0, cron.lastIndexOf(' ')).trim());
             LocalDateTime nextTime = cronExp.next(now);
-            return nextTime == null;
+            if (nextTime != null) {
+                // 处理 7 位带年份的 cron
+                if (length == 7) {
+                    int nextTimeYear = nextTime.getYear();
+                    String yearField = split[6].trim();
+                    if (isValidYearField(yearField)) {
+                        return true; // 年份字段非法视为过期
+                    }
+
+                    // 检查年份是否已过期
+                    if (yearField.contains("-")) {
+                        String[] range = yearField.split("-");
+                        int start = Integer.parseInt(range[0]);
+                        int end = Integer.parseInt(range[1]);
+                        // 验证年份范围
+                        if (start > end) {
+                            return true;
+                        }
+                        // 检查年份是否已过
+                        if (nextTimeYear > end || nextTimeYear < start) {
+                            return true;
+                        }
+                    } else {
+                        int year = Integer.parseInt(yearField);
+                        // 检查年份是否已过
+                        if (nextTimeYear > year) {
+                            return true;
+                        }
+                    }
+                }
+            }
+            return nextTime == null || nextTime.isBefore(now);
         } catch (Exception e) {
             return true;
         }
