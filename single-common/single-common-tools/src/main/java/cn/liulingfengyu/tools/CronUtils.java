@@ -54,7 +54,7 @@ public class CronUtils {
         if (length == 7) {
             String yearField = split[6].trim();
             if (isValidYearField(yearField)) {
-                return false;
+                return true;
             }
             // 去掉年份部分，使用前6位进行标准校验
             cron = cron.substring(0, cron.lastIndexOf(' ')).trim();
@@ -76,12 +76,12 @@ public class CronUtils {
      */
     private static boolean isValidYearField(String yearField) {
         if (yearField.equals("*")) {
-            return false;
+            return true;
         }
 
         // 正则匹配：数字、逗号、短横线
-        return !yearField.matches("^(\\d{4})(,(\\d{4}))*$") &&
-                !yearField.matches("^\\d{4}-\\d{4}$");
+        return yearField.matches("^(\\d{4})(,(\\d{4}))*$") &&
+                yearField.matches("^\\d{4}-\\d{4}$");
     }
 
     /**
@@ -109,7 +109,7 @@ public class CronUtils {
                     int nextTimeYear = nextTime.getYear();
                     String yearField = split[6].trim();
                     if (isValidYearField(yearField)) {
-                        return true; // 年份字段非法视为过期
+                        return false; // 年份字段非法视为过期
                     }
 
                     // 检查年份是否已过期
